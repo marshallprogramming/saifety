@@ -5,9 +5,17 @@ as a typed object the pipeline can query.
 
 from __future__ import annotations
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 import yaml
+
+
+def _resolve_env(value: Optional[str]) -> Optional[str]:
+    """Replace ${VAR_NAME} placeholders with environment variable values."""
+    if not value:
+        return value
+    return re.sub(r"\$\{(\w+)\}", lambda m: os.environ.get(m.group(1), m.group(0)), value)
 
 
 @dataclass
@@ -56,6 +64,7 @@ class RateLimitConfig:
 class Policy:
     tenant_id: str
     upstream_url: str
+    upstream_api_key: Optional[str] = None   # if set, used instead of the client's key
     input: InputPolicy = field(default_factory=InputPolicy)
     output: OutputPolicy = field(default_factory=OutputPolicy)
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
@@ -97,6 +106,7 @@ class PolicyEngine:
         return Policy(
             tenant_id=tenant_id,
             upstream_url=cfg.get("upstream_url", "https://api.openai.com/v1/chat/completions"),
+            upstream_api_key=_resolve_env(cfg.get("upstream_api_key")),
             input=InputPolicy(
                 pii=PIIConfig(
                     enabled=pii_raw.get("enabled", True),

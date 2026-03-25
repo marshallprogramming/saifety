@@ -8,6 +8,7 @@ tenants:
   # ── Default policy (applies to all tenants unless overridden) ──────────────
   default:
     upstream_url: "https://api.openai.com/v1/chat/completions"
+    upstream_api_key: "${OPENAI_API_KEY}"   # reads from environment variable
 
     input:
       pii:

@@ -29,10 +29,12 @@ from pipeline import GuardrailPipeline
 from audit import AuditLogger
 from streaming import stream_openai, stream_anthropic
 from rate_limiter import RateLimiter
+from auth import KeyStore, _extract_bearer
 
-app = FastAPI(title="AI Guardrail Proxy", version="0.3.0")
+app = FastAPI(title="AI Guardrail Proxy", version="0.4.0")
 audit = AuditLogger()
 limiter = RateLimiter()
+keystore = KeyStore()
 
 _DASHBOARD_DIR = os.path.join(os.path.dirname(__file__), "dashboard")
 
@@ -53,7 +55,17 @@ async def proxy_openai(
     authorization: Optional[str] = Header(None),
     x_tenant_id: Optional[str] = Header(None),
 ):
-    tenant_id = x_tenant_id or "default"
+    # ── Auth ──
+    proxy_key = keystore.validate(_extract_bearer(authorization))
+    if proxy_key is None:
+        raise HTTPException(status_code=401, detail={"error": "invalid_api_key",
+                                                      "message": "Invalid or missing proxy key."})
+
+    tenant_id = (
+        proxy_key.tenant_id
+        if proxy_key.tenant_id != "__from_header__"
+        else (x_tenant_id or "default")
+    )
     body = await request.json()
 
     policy = PolicyEngine.load_for_tenant(tenant_id)
@@ -79,9 +91,15 @@ async def proxy_openai(
 
     body["messages"] = input_result.messages
 
+    # Use the policy's stored upstream key if configured, else forward the client's key
+    upstream_auth = (
+        f"Bearer {policy.upstream_api_key}"
+        if policy.upstream_api_key
+        else authorization
+    )
     forward_headers = {
         "Content-Type": "application/json",
-        **({"Authorization": authorization} if authorization else {}),
+        **({"Authorization": upstream_auth} if upstream_auth else {}),
     }
 
     # Streaming path
@@ -124,7 +142,19 @@ async def proxy_anthropic(
     x_tenant_id: Optional[str] = Header(None),
     anthropic_version: Optional[str] = Header(None),
 ):
-    tenant_id = x_tenant_id or "default"
+    # ── Auth ──
+    proxy_key = keystore.validate(x_api_key)
+    if proxy_key is None:
+        raise HTTPException(status_code=401, detail={
+            "type": "error",
+            "error": {"type": "authentication_error", "message": "Invalid or missing proxy key."},
+        })
+
+    tenant_id = (
+        proxy_key.tenant_id
+        if proxy_key.tenant_id != "__from_header__"
+        else (x_tenant_id or "default")
+    )
     body = await request.json()
 
     policy = PolicyEngine.load_for_tenant(tenant_id)
@@ -160,10 +190,12 @@ async def proxy_anthropic(
     if input_result.system is not None:
         body["system"] = input_result.system
 
+    # Use the policy's stored upstream key if configured, else forward the client's key
+    upstream_api_key = policy.upstream_api_key or x_api_key
     forward_headers = {
         "Content-Type": "application/json",
         "anthropic-version": anthropic_version or ANTHROPIC_DEFAULT_VERSION,
-        **({"x-api-key": x_api_key} if x_api_key else {}),
+        **({"x-api-key": upstream_api_key} if upstream_api_key else {}),
     }
 
     upstream_url = f"{ANTHROPIC_API_BASE}/v1/messages"
@@ -225,6 +257,19 @@ async def get_rate_limits(tenant_id: str = "default"):
 async def get_stats(tenant_id: Optional[str] = None):
     """Aggregated stats for the dashboard."""
     return audit.get_stats(tenant_id=tenant_id)
+
+
+@app.get("/auth-status")
+async def auth_status():
+    """Shows whether proxy auth is enabled. Does not expose keys."""
+    return {
+        "auth_enabled": keystore.auth_enabled,
+        "message": (
+            "Auth is enforced. All requests require a valid proxy key."
+            if keystore.auth_enabled
+            else "Auth is disabled (dev mode). Create keys.yaml to enable it."
+        ),
+    }
 
 
 @app.get("/health")

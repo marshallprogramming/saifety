@@ -1,0 +1,28 @@
+# Proxy API keys — copy this file to keys.yaml and populate with real values.
+#
+# IMPORTANT: Add keys.yaml to .gitignore (already done). Never commit real keys.
+#
+# Generate a new key with:
+#   python3 -c "from auth import generate_key; print(generate_key())"
+#
+# When this file exists and contains at least one key, auth is enforced on
+# all requests. When keys.yaml is absent, the proxy runs in open dev mode.
+#
+# The tenant_id here maps to a tenant in policy.yaml — that's where guardrail
+# rules and the upstream AI API key are configured.
+
+keys:
+  "sk-saifety-replace-with-generated-key-1":
+    name: "Production App"
+    tenant_id: "default"
+    enabled: true
+
+  "sk-saifety-replace-with-generated-key-2":
+    name: "Customer Chatbot"
+    tenant_id: "strict"
+    enabled: true
+
+  "sk-saifety-replace-with-generated-key-3":
+    name: "Internal Dev"
+    tenant_id: "dev"
+    enabled: true

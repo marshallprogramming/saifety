@@ -17,6 +17,9 @@ audit.db
 .env.*
 *.local
 
+# Proxy keys — never commit real keys
+keys.yaml
+
 # macOS
 .DS_Store
 
