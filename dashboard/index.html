@@ -538,6 +538,7 @@
       <option value="anthropic">Anthropic</option>
     </select>
     <button class="refresh" onclick="refresh()">↻ Refresh</button>
+    <a id="logout-btn" href="/logout" style="display:none;color:var(--muted);font-size:13px;text-decoration:none;padding:6px 10px;border:1px solid var(--border);border-radius:6px">Sign out</a>
   </div>
 </header>
 
@@ -1085,6 +1086,13 @@
   }
 
   // ── Init ───────────────────────────────────────────────────────────────────
+
+  // Show logout button only when dashboard auth is active
+  fetch('/auth-config').then(r => r.json()).then(d => {
+    if (d.dashboard_auth_enabled) {
+      document.getElementById('logout-btn').style.display = 'inline-block';
+    }
+  }).catch(() => {});
 
   refresh();
   setInterval(refresh, 10000);

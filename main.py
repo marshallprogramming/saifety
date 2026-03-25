@@ -25,6 +25,9 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import RedirectResponse
+
 from policy import PolicyEngine
 from pipeline import GuardrailPipeline
 from audit import AuditLogger
@@ -34,8 +37,34 @@ from auth import KeyStore, _extract_bearer
 from webhooks import WebhookDispatcher
 from toxicity import ToxicityChecker
 from guardrails.content_utils import get_text
+import dashboard_auth as dash_auth
 
 app = FastAPI(title="AI Guardrail Proxy", version="0.6.0")
+
+
+class DashboardAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+
+        # Proxy routes and public paths skip dashboard auth
+        if dash_auth.is_proxy_path(path) or path in dash_auth.PUBLIC_PATHS:
+            return await call_next(request)
+
+        if not dash_auth.auth_enabled():
+            return await call_next(request)
+
+        token = request.cookies.get("dash_session")
+        if dash_auth.validate_session(token):
+            return await call_next(request)
+
+        # Unauthenticated — redirect HTML requests to login, return 401 for API
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            return RedirectResponse(url="/login", status_code=302)
+        return JSONResponse({"error": "unauthenticated"}, status_code=401)
+
+
+app.add_middleware(DashboardAuthMiddleware)
 audit = AuditLogger()
 limiter = RateLimiter()
 keystore = KeyStore()
@@ -48,6 +77,40 @@ _DASHBOARD_DIR = os.path.join(os.path.dirname(__file__), "dashboard")
 @app.get("/")
 async def dashboard():
     return FileResponse(os.path.join(_DASHBOARD_DIR, "index.html"))
+
+
+@app.get("/login")
+async def login_page():
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "login.html"))
+
+
+@app.post("/login")
+async def login(request: Request):
+    form = await request.form()
+    password = form.get("password", "")
+    if not dash_auth.check_password(password):
+        return FileResponse(os.path.join(_DASHBOARD_DIR, "login.html"), status_code=401,
+                            headers={"X-Login-Error": "1"})
+    token = dash_auth.create_session()
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie("dash_session", token, httponly=True, samesite="lax", max_age=86400)
+    return response
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    token = request.cookies.get("dash_session")
+    if token:
+        dash_auth.revoke_session(token)
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie("dash_session")
+    return response
+
+
+@app.get("/auth-config")
+async def auth_config():
+    """Tells the dashboard whether password auth is active."""
+    return {"dashboard_auth_enabled": dash_auth.auth_enabled()}
 
 ANTHROPIC_API_BASE = "https://api.anthropic.com"
 ANTHROPIC_DEFAULT_VERSION = "2023-06-01"
