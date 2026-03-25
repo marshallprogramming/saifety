@@ -1,0 +1,161 @@
+# AI Guardrail Proxy — Policy Configuration
+# Each key under "tenants" is a tenant ID.
+# "default" applies to any tenant not explicitly listed.
+# Tenant-specific keys override the default.
+
+tenants:
+
+  # ── Default policy (applies to all tenants unless overridden) ──────────────
+  default:
+    upstream_url: "https://api.openai.com/v1/chat/completions"
+
+    input:
+      pii:
+        enabled: true
+        action: redact          # "redact" replaces PII in-place; "block" rejects request
+        types:
+          - email
+          - phone
+          - ssn
+          - credit_card
+
+      prompt_injection:
+        enabled: true
+        action: block
+
+      topic_filter:
+        enabled: false
+        action: block
+        blocked_topics: []
+
+    output:
+      max_length: null          # null = no limit
+      toxicity:
+        enabled: true
+        action: block
+      json_schema: null         # null = no schema enforcement
+
+  # ── Strict policy (e.g. customer-facing chatbot, regulated industry) ───────
+  strict:
+    upstream_url: "https://api.openai.com/v1/chat/completions"
+
+    input:
+      pii:
+        enabled: true
+        action: block           # reject rather than redact
+        types:
+          - email
+          - phone
+          - ssn
+          - credit_card
+
+      prompt_injection:
+        enabled: true
+        action: block
+
+      topic_filter:
+        enabled: true
+        action: block
+        blocked_topics:
+          - competitor
+          - lawsuit
+          - refund
+          - pricing
+
+    output:
+      max_length: 2000
+      toxicity:
+        enabled: true
+        action: block
+
+  # ── Internal dev policy (permissive, useful for testing) ───────────────────
+  dev:
+    upstream_url: "https://api.openai.com/v1/chat/completions"
+
+    input:
+      pii:
+        enabled: false
+        action: redact
+        types: []
+
+      prompt_injection:
+        enabled: false
+        action: block
+
+      topic_filter:
+        enabled: false
+        action: block
+        blocked_topics: []
+
+    output:
+      max_length: null
+      toxicity:
+        enabled: false
+        action: block
+
+  # ── Anthropic / Claude example ────────────────────────────────────────────
+  # Note: the upstream_url for Anthropic is handled automatically by the
+  # /v1/messages route — this entry is here for PII/topic overrides only.
+  anthropic_strict:
+    input:
+      pii:
+        enabled: true
+        action: block
+        types:
+          - email
+          - phone
+          - ssn
+          - credit_card
+      prompt_injection:
+        enabled: true
+        action: block
+      topic_filter:
+        enabled: true
+        action: block
+        blocked_topics:
+          - lawsuit
+          - competitor
+    output:
+      max_length: 4000
+      toxicity:
+        enabled: true
+        action: block
+
+  # ── Structured-output policy (enforces JSON schema on responses) ───────────
+  structured:
+    upstream_url: "https://api.openai.com/v1/chat/completions"
+
+    input:
+      pii:
+        enabled: true
+        action: redact
+        types:
+          - email
+          - phone
+
+      prompt_injection:
+        enabled: true
+        action: block
+
+      topic_filter:
+        enabled: false
+        action: block
+        blocked_topics: []
+
+    output:
+      max_length: 5000
+      toxicity:
+        enabled: true
+        action: block
+      json_schema:
+        type: object
+        required:
+          - answer
+          - confidence
+        properties:
+          answer:
+            type: string
+          confidence:
+            type: number
+          sources:
+            type: array

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Runtime data — do not commit
+audit.db
+
+# Environment / secrets
+.env
+.env.*
+*.local
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Node (dashboard build artifacts if added later)
+node_modules/
+dashboard/dist/
