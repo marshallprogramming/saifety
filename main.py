@@ -27,6 +27,7 @@ from typing import Optional
 from policy import PolicyEngine
 from pipeline import GuardrailPipeline
 from audit import AuditLogger
+from streaming import stream_openai, stream_anthropic
 
 app = FastAPI(title="AI Guardrail Proxy", version="0.2.0")
 audit = AuditLogger()
@@ -72,6 +73,11 @@ async def proxy_openai(
         **({"Authorization": authorization} if authorization else {}),
     }
 
+    # Streaming path
+    if body.get("stream"):
+        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit)
+
+    # Non-streaming path
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(policy.upstream_url, json=body, headers=forward_headers)
@@ -139,6 +145,11 @@ async def proxy_anthropic(
 
     upstream_url = f"{ANTHROPIC_API_BASE}/v1/messages"
 
+    # Streaming path
+    if body.get("stream"):
+        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit)
+
+    # Non-streaming path
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(upstream_url, json=body, headers=forward_headers)

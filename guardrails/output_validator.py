@@ -49,6 +49,24 @@ class OutputValidator:
 
         return GuardrailResult(blocked=False, choices=working)  # reusing choices field
 
+    # ── Streaming (incremental) ───────────────────────────────────────────────
+
+    def check_stream(self, accumulated_text: str) -> Optional[str]:
+        """
+        Check accumulated text so far during a streaming response.
+        JSON schema validation is skipped — partial responses are never valid JSON.
+        Returns an error string if blocked, None if clean.
+        """
+        if self.config.max_length and len(accumulated_text) > self.config.max_length:
+            return f"Response exceeds max length ({len(accumulated_text)} > {self.config.max_length} chars)"
+
+        if self.config.toxicity_enabled:
+            for pattern in _compiled_toxic:
+                if pattern.search(accumulated_text):
+                    return "Response contains toxic content"
+
+        return None
+
     # ── Shared validation logic ───────────────────────────────────────────────
 
     def _validate_text(self, text: str) -> Optional[str]:

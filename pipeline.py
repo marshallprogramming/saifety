@@ -79,6 +79,10 @@ class GuardrailPipeline:
 
         return InputResult(blocked=False, messages=working_messages, system=working_system)
 
+    def check_stream_chunk(self, accumulated_text: str) -> Optional[str]:
+        """Check accumulated streaming text. Returns an error string if blocked."""
+        return OutputValidator(self.policy.output).check_stream(accumulated_text)
+
     def run_output_openai(self, choices: list[dict]) -> OutputResult:
         validator = OutputValidator(self.policy.output)
         result = validator.check(choices)
