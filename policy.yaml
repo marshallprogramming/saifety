@@ -35,6 +35,11 @@ tenants:
         action: block
       json_schema: null         # null = no schema enforcement
 
+    rate_limit:
+      enabled: false            # disabled by default — enable per tenant as needed
+      requests_per_minute: 60
+      requests_per_hour: 1000
+
   # ── Strict policy (e.g. customer-facing chatbot, regulated industry) ───────
   strict:
     upstream_url: "https://api.openai.com/v1/chat/completions"
@@ -67,6 +72,11 @@ tenants:
       toxicity:
         enabled: true
         action: block
+
+    rate_limit:
+      enabled: true
+      requests_per_minute: 20
+      requests_per_hour: 200
 
   # ── Internal dev policy (permissive, useful for testing) ───────────────────
   dev:

@@ -28,9 +28,11 @@ from policy import PolicyEngine
 from pipeline import GuardrailPipeline
 from audit import AuditLogger
 from streaming import stream_openai, stream_anthropic
+from rate_limiter import RateLimiter
 
-app = FastAPI(title="AI Guardrail Proxy", version="0.2.0")
+app = FastAPI(title="AI Guardrail Proxy", version="0.3.0")
 audit = AuditLogger()
+limiter = RateLimiter()
 
 _DASHBOARD_DIR = os.path.join(os.path.dirname(__file__), "dashboard")
 
@@ -56,6 +58,15 @@ async def proxy_openai(
 
     policy = PolicyEngine.load_for_tenant(tenant_id)
     pipeline = GuardrailPipeline(policy)
+
+    rl = limiter.check(tenant_id, policy.rate_limit)
+    if rl.limited:
+        audit.log(tenant_id, "rate_limited", rl.reason, body, "openai")
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "rate_limited", "reason": rl.reason},
+            headers={"Retry-After": str(rl.retry_after)},
+        )
 
     input_result = pipeline.run_input(body.get("messages", []))
     if input_result.blocked:
@@ -118,6 +129,18 @@ async def proxy_anthropic(
 
     policy = PolicyEngine.load_for_tenant(tenant_id)
     pipeline = GuardrailPipeline(policy)
+
+    rl = limiter.check(tenant_id, policy.rate_limit)
+    if rl.limited:
+        audit.log(tenant_id, "rate_limited", rl.reason, body, "anthropic")
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "type": "error",
+                "error": {"type": "rate_limit_error", "message": rl.reason},
+            },
+            headers={"Retry-After": str(rl.retry_after)},
+        )
 
     # Anthropic puts the system prompt as a top-level field, not in messages
     system_prompt = body.get("system")
@@ -189,6 +212,13 @@ async def get_audit_log(
 ):
     """View recent audit log entries. Filter by tenant_id or api (openai|anthropic)."""
     return audit.get_recent(limit=limit, tenant_id=tenant_id, api=api)
+
+
+@app.get("/rate-limits")
+async def get_rate_limits(tenant_id: str = "default"):
+    """Current rate limit usage for a tenant."""
+    policy = PolicyEngine.load_for_tenant(tenant_id)
+    return limiter.status(tenant_id, policy.rate_limit)
 
 
 @app.get("/stats")

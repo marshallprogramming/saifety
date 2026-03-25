@@ -46,11 +46,19 @@ class OutputPolicy:
 
 
 @dataclass
+class RateLimitConfig:
+    enabled: bool = False
+    requests_per_minute: Optional[int] = None
+    requests_per_hour: Optional[int] = None
+
+
+@dataclass
 class Policy:
     tenant_id: str
     upstream_url: str
     input: InputPolicy = field(default_factory=InputPolicy)
     output: OutputPolicy = field(default_factory=OutputPolicy)
+    rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
 
 
 class PolicyEngine:
@@ -79,6 +87,7 @@ class PolicyEngine:
     def _parse(cls, tenant_id: str, cfg: dict) -> Policy:
         input_cfg = cfg.get("input", {})
         output_cfg = cfg.get("output", {})
+        rl_raw = cfg.get("rate_limit", {})
 
         pii_raw = input_cfg.get("pii", {})
         inj_raw = input_cfg.get("prompt_injection", {})
@@ -109,5 +118,10 @@ class PolicyEngine:
                 toxicity_enabled=tox_raw.get("enabled", False),
                 toxicity_action=tox_raw.get("action", "block"),
                 json_schema=output_cfg.get("json_schema"),
+            ),
+            rate_limit=RateLimitConfig(
+                enabled=rl_raw.get("enabled", False),
+                requests_per_minute=rl_raw.get("requests_per_minute"),
+                requests_per_hour=rl_raw.get("requests_per_hour"),
             ),
         )
