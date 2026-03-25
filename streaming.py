@@ -16,7 +16,9 @@ from fastapi.responses import StreamingResponse
 from typing import Optional
 
 from pipeline import GuardrailPipeline
+from policy import WebhookConfig
 from audit import AuditLogger
+from webhooks import WebhookDispatcher
 
 # Read timeout is None so long generations don't time out mid-stream.
 _STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=10.0, pool=10.0)
@@ -31,6 +33,8 @@ def stream_openai(
     pipeline: GuardrailPipeline,
     tenant_id: str,
     audit: AuditLogger,
+    webhook: WebhookDispatcher,
+    webhook_config: WebhookConfig,
 ) -> StreamingResponse:
 
     async def generate():
@@ -46,19 +50,17 @@ def stream_openai(
                             yield "\n"
                             continue
 
-                        # Pass non-data lines (comments, empty keep-alives) straight through
                         if not raw_line.startswith("data: "):
                             yield f"{raw_line}\n\n"
                             continue
 
-                        data_str = raw_line[6:]   # strip "data: "
+                        data_str = raw_line[6:]
 
                         if data_str == "[DONE]":
                             audit.log(tenant_id, "passed", None, body, "openai")
                             yield "data: [DONE]\n\n"
                             return
 
-                        # Parse the chunk and extract the text delta
                         try:
                             chunk = json.loads(data_str)
                         except json.JSONDecodeError:
@@ -76,13 +78,10 @@ def stream_openai(
                             error = pipeline.check_stream_chunk(accumulated)
                             if error:
                                 audit.log(tenant_id, "output_blocked", error, body, "openai")
-                                # Send a final error chunk then terminate
-                                err_chunk = {
-                                    "error": {
-                                        "type": "guardrail_blocked",
-                                        "message": error,
-                                    }
-                                }
+                                webhook.dispatch(webhook_config, "output_blocked", tenant_id,
+                                                 "openai", "output_validator", error,
+                                                 body.get("messages", []))
+                                err_chunk = {"error": {"type": "guardrail_blocked", "message": error}}
                                 yield f"data: {json.dumps(err_chunk)}\n\n"
                                 yield "data: [DONE]\n\n"
                                 return
@@ -110,14 +109,12 @@ def stream_anthropic(
     pipeline: GuardrailPipeline,
     tenant_id: str,
     audit: AuditLogger,
+    webhook: WebhookDispatcher,
+    webhook_config: WebhookConfig,
 ) -> StreamingResponse:
     """
     Anthropic streams Server-Sent Events with explicit event: lines.
     Text content arrives in content_block_delta events.
-
-    Format:
-        event: content_block_delta
-        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}
     """
 
     async def generate():
@@ -131,7 +128,6 @@ def stream_anthropic(
 
                     async for raw_line in resp.aiter_lines():
                         if not raw_line:
-                            # Blank line = end of an SSE event — flush it
                             yield "\n"
                             current_event = None
                             continue
@@ -144,7 +140,6 @@ def stream_anthropic(
                         if raw_line.startswith("data: "):
                             data_str = raw_line[6:]
 
-                            # Extract text from content_block_delta events
                             if current_event == "content_block_delta":
                                 try:
                                     chunk = json.loads(data_str)
@@ -157,6 +152,10 @@ def stream_anthropic(
                                             if error:
                                                 audit.log(tenant_id, "output_blocked",
                                                           error, body, "anthropic")
+                                                webhook.dispatch(webhook_config, "output_blocked",
+                                                                 tenant_id, "anthropic",
+                                                                 "output_validator", error,
+                                                                 body.get("messages", []))
                                                 yield _anthropic_error_event(error)
                                                 return
                                 except json.JSONDecodeError:
@@ -168,7 +167,6 @@ def stream_anthropic(
                             yield f"{raw_line}\n"
                             continue
 
-                        # Pass any other lines through unchanged
                         yield f"{raw_line}\n"
 
         except httpx.HTTPStatusError as e:

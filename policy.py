@@ -61,6 +61,14 @@ class RateLimitConfig:
 
 
 @dataclass
+class WebhookConfig:
+    enabled: bool = False
+    url: Optional[str] = None
+    on: list = field(default_factory=lambda: ["input_blocked", "output_blocked", "rate_limited"])
+    secret: Optional[str] = None   # if set, signs payloads with HMAC-SHA256
+
+
+@dataclass
 class Policy:
     tenant_id: str
     upstream_url: str
@@ -68,6 +76,7 @@ class Policy:
     input: InputPolicy = field(default_factory=InputPolicy)
     output: OutputPolicy = field(default_factory=OutputPolicy)
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
+    webhook: WebhookConfig = field(default_factory=WebhookConfig)
 
 
 class PolicyEngine:
@@ -97,6 +106,7 @@ class PolicyEngine:
         input_cfg = cfg.get("input", {})
         output_cfg = cfg.get("output", {})
         rl_raw = cfg.get("rate_limit", {})
+        wh_raw = cfg.get("webhook", {})
 
         pii_raw = input_cfg.get("pii", {})
         inj_raw = input_cfg.get("prompt_injection", {})
@@ -133,5 +143,11 @@ class PolicyEngine:
                 enabled=rl_raw.get("enabled", False),
                 requests_per_minute=rl_raw.get("requests_per_minute"),
                 requests_per_hour=rl_raw.get("requests_per_hour"),
+            ),
+            webhook=WebhookConfig(
+                enabled=wh_raw.get("enabled", False),
+                url=_resolve_env(wh_raw.get("url")),
+                on=wh_raw.get("on", ["input_blocked", "output_blocked", "rate_limited"]),
+                secret=_resolve_env(wh_raw.get("secret")),
             ),
         )

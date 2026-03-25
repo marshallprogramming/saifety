@@ -41,6 +41,15 @@ tenants:
       requests_per_minute: 60
       requests_per_hour: 1000
 
+    webhook:
+      enabled: false
+      url: "${WEBHOOK_URL}"     # set env var or paste URL directly
+      secret: "${WEBHOOK_SECRET}"  # optional — used to sign payloads
+      on:
+        - input_blocked
+        - output_blocked
+        - rate_limited
+
   # ── Strict policy (e.g. customer-facing chatbot, regulated industry) ───────
   strict:
     upstream_url: "https://api.openai.com/v1/chat/completions"
@@ -78,6 +87,15 @@ tenants:
       enabled: true
       requests_per_minute: 20
       requests_per_hour: 200
+
+    webhook:
+      enabled: false            # set to true and add url to enable Slack/PagerDuty alerts
+      url: "${WEBHOOK_URL}"
+      secret: "${WEBHOOK_SECRET}"
+      on:
+        - input_blocked
+        - output_blocked
+        - rate_limited
 
   # ── Internal dev policy (permissive, useful for testing) ───────────────────
   dev:

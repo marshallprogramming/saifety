@@ -30,11 +30,13 @@ from audit import AuditLogger
 from streaming import stream_openai, stream_anthropic
 from rate_limiter import RateLimiter
 from auth import KeyStore, _extract_bearer
+from webhooks import WebhookDispatcher
 
-app = FastAPI(title="AI Guardrail Proxy", version="0.4.0")
+app = FastAPI(title="AI Guardrail Proxy", version="0.5.0")
 audit = AuditLogger()
 limiter = RateLimiter()
 keystore = KeyStore()
+webhook = WebhookDispatcher()
 
 _DASHBOARD_DIR = os.path.join(os.path.dirname(__file__), "dashboard")
 
@@ -74,6 +76,7 @@ async def proxy_openai(
     rl = limiter.check(tenant_id, policy.rate_limit)
     if rl.limited:
         audit.log(tenant_id, "rate_limited", rl.reason, body, "openai")
+        webhook.dispatch(policy.webhook, "rate_limited", tenant_id, "openai", None, rl.reason, body.get("messages", []))
         raise HTTPException(
             status_code=429,
             detail={"error": "rate_limited", "reason": rl.reason},
@@ -83,6 +86,7 @@ async def proxy_openai(
     input_result = pipeline.run_input(body.get("messages", []))
     if input_result.blocked:
         audit.log(tenant_id, "input_blocked", input_result.reason, body, "openai")
+        webhook.dispatch(policy.webhook, "input_blocked", tenant_id, "openai", input_result.guardrail, input_result.reason, body.get("messages", []))
         raise HTTPException(status_code=400, detail={
             "error": "request_blocked",
             "reason": input_result.reason,
@@ -104,7 +108,7 @@ async def proxy_openai(
 
     # Streaming path
     if body.get("stream"):
-        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit)
+        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook)
 
     # Non-streaming path
     try:
@@ -122,6 +126,7 @@ async def proxy_openai(
         output_result = pipeline.run_output_openai(response_data["choices"])
         if output_result.blocked:
             audit.log(tenant_id, "output_blocked", output_result.reason, body, "openai")
+            webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "openai", output_result.guardrail, output_result.reason, body.get("messages", []))
             raise HTTPException(status_code=502, detail={
                 "error": "response_blocked",
                 "reason": output_result.reason,
@@ -163,6 +168,7 @@ async def proxy_anthropic(
     rl = limiter.check(tenant_id, policy.rate_limit)
     if rl.limited:
         audit.log(tenant_id, "rate_limited", rl.reason, body, "anthropic")
+        webhook.dispatch(policy.webhook, "rate_limited", tenant_id, "anthropic", None, rl.reason, body.get("messages", []))
         raise HTTPException(
             status_code=429,
             detail={
@@ -178,6 +184,7 @@ async def proxy_anthropic(
     input_result = pipeline.run_input(body.get("messages", []), system=system_prompt)
     if input_result.blocked:
         audit.log(tenant_id, "input_blocked", input_result.reason, body, "anthropic")
+        webhook.dispatch(policy.webhook, "input_blocked", tenant_id, "anthropic", input_result.guardrail, input_result.reason, body.get("messages", []))
         raise HTTPException(status_code=400, detail={
             "type": "error",
             "error": {
@@ -202,7 +209,7 @@ async def proxy_anthropic(
 
     # Streaming path
     if body.get("stream"):
-        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit)
+        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook)
 
     # Non-streaming path
     try:
@@ -221,6 +228,7 @@ async def proxy_anthropic(
         output_result = pipeline.run_output_anthropic(response_data["content"])
         if output_result.blocked:
             audit.log(tenant_id, "output_blocked", output_result.reason, body, "anthropic")
+            webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "anthropic", output_result.guardrail, output_result.reason, body.get("messages", []))
             raise HTTPException(status_code=502, detail={
                 "type": "error",
                 "error": {
