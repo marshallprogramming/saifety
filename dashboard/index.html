@@ -50,7 +50,7 @@
       align-items: center;
     }
 
-    select, input {
+    select, input[type=text], input[type=number], textarea {
       background: var(--surface);
       border: 1px solid var(--border);
       color: var(--text);
@@ -59,9 +59,9 @@
       font-size: 13px;
     }
 
-    button.refresh {
-      background: var(--accent);
-      color: #fff;
+    textarea { resize: vertical; font-family: inherit; }
+
+    button {
       border: none;
       padding: 6px 14px;
       border-radius: 6px;
@@ -69,7 +69,50 @@
       font-size: 13px;
     }
 
-    button.refresh:hover { opacity: 0.85; }
+    button.refresh, button.btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.btn-danger {
+      background: rgba(239,68,68,0.15);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+
+    button.btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button:hover { opacity: 0.85; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .tab {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     main { padding: 24px; max-width: 1300px; margin: 0 auto; }
 
@@ -254,20 +297,240 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
+
+    /* ── Policy Editor ────────────────────────────────────────────────────── */
+
+    .policy-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 800px) { .policy-layout { grid-template-columns: 1fr; } }
+
+    .tenant-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .tenant-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tenant-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      transition: background 0.1s;
+    }
+
+    .tenant-item:last-child { border-bottom: none; }
+    .tenant-item:hover { background: rgba(255,255,255,0.03); }
+    .tenant-item.active { background: rgba(99,102,241,0.1); color: var(--accent); }
+
+    .tenant-item .del-btn {
+      opacity: 0;
+      font-size: 11px;
+      padding: 2px 6px;
+      background: transparent;
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 4px;
+    }
+
+    .tenant-item:hover .del-btn { opacity: 1; }
+    .tenant-item.active .del-btn { opacity: 1; }
+
+    .policy-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .policy-form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .policy-form-header h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .policy-form-header .tenant-name {
+      color: var(--accent);
+    }
+
+    .policy-form-body { padding: 20px; }
+
+    .form-section {
+      margin-bottom: 28px;
+    }
+
+    .form-section:last-child { margin-bottom: 0; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-row:last-child { margin-bottom: 0; }
+
+    .form-row label {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .form-row .hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .form-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Toggle switch */
+    .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+    .toggle input[type=checkbox] { display: none; }
+
+    .toggle-track {
+      width: 36px; height: 20px;
+      background: var(--border);
+      border-radius: 10px;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 14px; height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      transition: left 0.2s;
+    }
+
+    .toggle input:checked + .toggle-track .toggle-thumb { left: 19px; }
+
+    .toggle-label { font-size: 13px; }
+
+    /* Checkbox group */
+    .check-group { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .check-item input { cursor: pointer; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+
+    #toast.show { opacity: 1; }
+    #toast.success { background: rgba(34,197,94,0.9); color: #fff; }
+    #toast.error   { background: rgba(239,68,68,0.9);  color: #fff; }
+
+    /* New tenant modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 360px;
+    }
+
+    .modal h3 { font-size: 15px; margin-bottom: 16px; }
+
+    .modal input {
+      width: 100%;
+      margin-bottom: 16px;
+      padding: 8px 12px;
+    }
+
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
   </style>
 </head>
 <body>
 
 <header>
   <h1><span>Guardrail</span> Proxy Dashboard</h1>
-  <div class="controls">
+  <div class="controls" id="overview-controls">
     <select id="tenant-filter">
       <option value="">All tenants</option>
-      <option value="default">default</option>
-      <option value="strict">strict</option>
-      <option value="dev">dev</option>
-      <option value="structured">structured</option>
-      <option value="anthropic_strict">anthropic_strict</option>
     </select>
     <select id="api-filter">
       <option value="">All APIs</option>
@@ -278,46 +541,107 @@
   </div>
 </header>
 
-<main>
-  <div class="stats" id="stats-row">
-    <div class="card"><div class="label">Total Requests</div><div class="value" id="s-total">—</div></div>
-    <div class="card"><div class="label">Blocked</div><div class="value red" id="s-blocked">—</div></div>
-    <div class="card"><div class="label">Pass Rate</div><div class="value green" id="s-pass">—</div></div>
-    <div class="card"><div class="label">Proxy Status</div><div class="value green" id="s-status"><span class="dot"></span>Online</div></div>
-  </div>
+<nav class="tabs">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab"        onclick="showTab('policy')">Policy Editor</div>
+</nav>
 
-  <div class="grid-2">
-    <div class="panel">
-      <div class="panel-header">Top Block Reasons</div>
-      <div class="reason-list" id="reasons-list">
-        <div class="empty">No data yet</div>
-      </div>
+<!-- ── Overview tab ──────────────────────────────────────────────────────── -->
+<div class="tab-content active" id="tab-overview">
+  <main>
+    <div class="stats" id="stats-row">
+      <div class="card"><div class="label">Total Requests</div><div class="value" id="s-total">—</div></div>
+      <div class="card"><div class="label">Blocked</div><div class="value red" id="s-blocked">—</div></div>
+      <div class="card"><div class="label">Pass Rate</div><div class="value green" id="s-pass">—</div></div>
+      <div class="card"><div class="label">Proxy Status</div><div class="value green" id="s-status"><span class="dot"></span>Online</div></div>
     </div>
 
-    <div class="panel">
-      <div class="panel-header">Recent Activity</div>
-      <div class="feed">
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Tenant</th>
-              <th>API</th>
-              <th>Outcome</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody id="feed-body">
-            <tr><td colspan="5" class="empty">No events yet</td></tr>
-          </tbody>
-        </table>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-header">Top Block Reasons</div>
+        <div class="reason-list" id="reasons-list">
+          <div class="empty">No data yet</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Recent Activity</div>
+        <div class="feed">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Tenant</th>
+                <th>API</th>
+                <th>Outcome</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="feed-body">
+              <tr><td colspan="5" class="empty">No events yet</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
+  </main>
+</div>
+
+<!-- ── Policy Editor tab ─────────────────────────────────────────────────── -->
+<div class="tab-content" id="tab-policy">
+  <main>
+    <div class="policy-layout">
+
+      <!-- Tenant sidebar -->
+      <div class="tenant-list">
+        <div class="tenant-list-header">
+          Tenants
+          <button class="btn-ghost" style="padding:3px 8px;font-size:11px" onclick="openNewTenantModal()">+ New</button>
+        </div>
+        <div id="tenant-list-body"></div>
+      </div>
+
+      <!-- Form panel -->
+      <div class="policy-form" id="policy-form-panel">
+        <div style="padding:60px;text-align:center;color:var(--muted)">Select a tenant to edit its policy</div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- New tenant modal -->
+<div class="modal-backdrop" id="new-tenant-modal">
+  <div class="modal">
+    <h3>New Tenant</h3>
+    <input type="text" id="new-tenant-name" placeholder="Tenant ID (e.g. acme, prod)" />
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeNewTenantModal()">Cancel</button>
+      <button class="btn-primary" onclick="createTenant()">Create</button>
+    </div>
   </div>
-</main>
+</div>
+
+<div id="toast"></div>
 
 <script>
   const API_BASE = window.location.origin;
+
+  // ── Tab switching ───────────────────────────────────────────────────────────
+
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      const names = ['overview', 'policy'];
+      t.classList.toggle('active', names[i] === name);
+    });
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+
+    if (name === 'policy') loadPolicyEditor();
+    if (name === 'overview') refresh();
+  }
+
+  // ── Overview ───────────────────────────────────────────────────────────────
 
   function tenant() { return document.getElementById('tenant-filter').value; }
   function api()    { return document.getElementById('api-filter').value; }
@@ -354,7 +678,7 @@
     el.innerHTML = reasons.map(r => `
       <div class="reason-row">
         <div>
-          <div class="reason-label">${escape(r.reason || 'unknown')}</div>
+          <div class="reason-label">${esc(r.reason || 'unknown')}</div>
           <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(r.count/max*100)}%"></div></div>
         </div>
         <div class="reason-count">${r.count}</div>
@@ -379,12 +703,12 @@
         return `
           <tr>
             <td class="ts">${t}</td>
-            <td>${escape(row.tenant_id)}</td>
+            <td>${esc(row.tenant_id)}</td>
             <td><span class="badge api-${row.api}">${row.api}</span></td>
             <td><span class="badge ${row.outcome}">${row.outcome.replace('_', ' ')}</span></td>
             <td>
-              ${row.reason ? `<div class="reason-text">${escape(row.reason)}</div>` : ''}
-              <div class="msg-preview">${escape(preview)}</div>
+              ${row.reason ? `<div class="reason-text">${esc(row.reason)}</div>` : ''}
+              <div class="msg-preview">${esc(preview)}</div>
             </td>
           </tr>
         `;
@@ -407,7 +731,351 @@
     return '—';
   }
 
-  function escape(str) {
+  // ── Policy Editor ──────────────────────────────────────────────────────────
+
+  let _allTenants = {};
+  let _activeTenant = null;
+
+  async function loadPolicyEditor() {
+    try {
+      const r = await fetch(`${API_BASE}/policy`);
+      const d = await r.json();
+      _allTenants = d.config || {};
+      renderTenantList(d.tenants || []);
+
+      // Populate overview tenant filter too
+      const sel = document.getElementById('tenant-filter');
+      const existing = Array.from(sel.options).map(o => o.value).filter(Boolean);
+      (d.tenants || []).forEach(t => {
+        if (!existing.includes(t)) sel.add(new Option(t, t));
+      });
+    } catch(e) {
+      showToast('Failed to load policy', 'error');
+    }
+  }
+
+  function renderTenantList(tenants) {
+    const el = document.getElementById('tenant-list-body');
+    el.innerHTML = tenants.map(t => `
+      <div class="tenant-item ${t === _activeTenant ? 'active' : ''}" id="ti-${esc(t)}" onclick="selectTenant('${esc(t)}')">
+        <span>${esc(t)}</span>
+        ${t !== 'default' ? `<button class="del-btn" onclick="deleteTenant(event,'${esc(t)}')">✕</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function selectTenant(name) {
+    _activeTenant = name;
+    document.querySelectorAll('.tenant-item').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById('ti-' + name);
+    if (el) el.classList.add('active');
+    renderPolicyForm(name, _allTenants[name] || {});
+  }
+
+  function renderPolicyForm(tenantId, cfg) {
+    const inp   = cfg.input || {};
+    const pii   = inp.pii || {};
+    const inj   = inp.prompt_injection || {};
+    const topic = inp.topic_filter || {};
+    const out   = cfg.output || {};
+    const tox   = out.toxicity || {};
+    const rl    = cfg.rate_limit || {};
+
+    const piiTypes = ['email', 'phone', 'ssn', 'credit_card'];
+    const selectedTypes = pii.types || piiTypes;
+
+    const panel = document.getElementById('policy-form-panel');
+    panel.innerHTML = `
+      <div class="policy-form-header">
+        <h2>Editing: <span class="tenant-name">${esc(tenantId)}</span></h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" onclick="revertForm('${esc(tenantId)}')">Revert</button>
+          <button class="btn-primary" onclick="savePolicy('${esc(tenantId)}')">Save Changes</button>
+        </div>
+      </div>
+      <div class="policy-form-body">
+
+        <div class="form-section">
+          <div class="section-title">Upstream</div>
+          <div class="form-row">
+            <label>Upstream URL</label>
+            <input type="text" id="f-upstream-url" value="${esc(cfg.upstream_url || 'https://api.openai.com/v1/chat/completions')}" style="width:100%" />
+          </div>
+          <div class="form-row">
+            <label>API Key <span class="hint">(env var)</span></label>
+            <span style="color:var(--muted);font-size:12px">${esc(cfg.upstream_api_key || '—')} &nbsp;(set via environment variable, not editable here)</span>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">Input — PII Detection</div>
+          <div class="form-row">
+            <label>Enabled</label>
+            <label class="toggle">
+              <input type="checkbox" id="f-pii-enabled" ${pii.enabled !== false ? 'checked' : ''}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label" id="f-pii-enabled-lbl">${pii.enabled !== false ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>Action</label>
+            <select id="f-pii-action">
+              <option value="redact" ${(pii.action||'redact')==='redact'?'selected':''}>Redact (replace in-place)</option>
+              <option value="block"  ${pii.action==='block'?'selected':''}>Block (reject request)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Detect types</label>
+            <div class="check-group">
+              ${piiTypes.map(t => `
+                <label class="check-item">
+                  <input type="checkbox" name="pii-type" value="${t}" ${selectedTypes.includes(t)?'checked':''}> ${t}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">Input — Prompt Injection</div>
+          <div class="form-row">
+            <label>Enabled</label>
+            <label class="toggle">
+              <input type="checkbox" id="f-inj-enabled" ${inj.enabled !== false ? 'checked' : ''}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">${inj.enabled !== false ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">Input — Topic Filter</div>
+          <div class="form-row">
+            <label>Enabled</label>
+            <label class="toggle">
+              <input type="checkbox" id="f-topic-enabled" ${topic.enabled ? 'checked' : ''}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">${topic.enabled ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+          <div class="form-row" style="align-items:flex-start">
+            <label style="padding-top:6px">Blocked topics <span class="hint">(one per line)</span></label>
+            <textarea id="f-topic-list" rows="4" style="width:100%">${(topic.blocked_topics||[]).join('\n')}</textarea>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">Output — Length &amp; Schema</div>
+          <div class="form-row">
+            <label>Max response length <span class="hint">(chars, blank = no limit)</span></label>
+            <input type="number" id="f-max-length" value="${out.max_length || ''}" min="1" style="width:120px" />
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">Output — Toxicity Detection</div>
+          <div class="form-row">
+            <label>Enabled</label>
+            <label class="toggle">
+              <input type="checkbox" id="f-tox-enabled" ${tox.enabled !== false ? 'checked' : ''}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">${tox.enabled !== false ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>Provider</label>
+            <select id="f-tox-provider">
+              <option value="wordlist"   ${(tox.provider||'wordlist')==='wordlist'?'selected':''}>wordlist (built-in, no API key)</option>
+              <option value="openai"     ${tox.provider==='openai'?'selected':''}>OpenAI Moderation API</option>
+              <option value="perspective"${tox.provider==='perspective'?'selected':''}>Google Perspective API</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">Rate Limiting</div>
+          <div class="form-row">
+            <label>Enabled</label>
+            <label class="toggle">
+              <input type="checkbox" id="f-rl-enabled" ${rl.enabled ? 'checked' : ''}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">${rl.enabled ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>Requests / minute</label>
+            <input type="number" id="f-rl-rpm" value="${rl.requests_per_minute || 60}" min="1" style="width:100px" />
+          </div>
+          <div class="form-row">
+            <label>Requests / hour</label>
+            <input type="number" id="f-rl-rph" value="${rl.requests_per_hour || 1000}" min="1" style="width:100px" />
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    // Sync toggle labels dynamically
+    ['pii-enabled', 'inj-enabled', 'topic-enabled', 'tox-enabled', 'rl-enabled'].forEach(id => {
+      const cb = document.getElementById('f-' + id);
+      if (cb) cb.addEventListener('change', () => {
+        cb.nextElementSibling.nextElementSibling.textContent = cb.checked ? 'On' : 'Off';
+      });
+    });
+  }
+
+  function collectFormData() {
+    const val = id => document.getElementById(id);
+    const piiTypes = Array.from(document.querySelectorAll('input[name=pii-type]:checked')).map(c => c.value);
+    const topics = val('f-topic-list').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const maxLen = parseInt(val('f-max-length').value) || null;
+
+    const existing = _allTenants[_activeTenant] || {};
+
+    return {
+      ...(existing.upstream_api_key ? { upstream_api_key: existing.upstream_api_key } : {}),
+      upstream_url: val('f-upstream-url').value.trim(),
+      input: {
+        pii: {
+          enabled: val('f-pii-enabled').checked,
+          action: val('f-pii-action').value,
+          types: piiTypes,
+        },
+        prompt_injection: {
+          enabled: val('f-inj-enabled').checked,
+          action: 'block',
+        },
+        topic_filter: {
+          enabled: val('f-topic-enabled').checked,
+          action: 'block',
+          blocked_topics: topics,
+        },
+      },
+      output: {
+        max_length: maxLen,
+        toxicity: {
+          enabled: val('f-tox-enabled').checked,
+          provider: val('f-tox-provider').value,
+          ...(existing.output?.toxicity?.api_key ? { api_key: existing.output.toxicity.api_key } : {}),
+          ...(existing.output?.toxicity?.threshold ? { threshold: existing.output.toxicity.threshold } : {}),
+        },
+        ...(existing.output?.json_schema ? { json_schema: existing.output.json_schema } : {}),
+      },
+      rate_limit: {
+        enabled: val('f-rl-enabled').checked,
+        requests_per_minute: parseInt(val('f-rl-rpm').value) || 60,
+        requests_per_hour: parseInt(val('f-rl-rph').value) || 1000,
+      },
+      ...(existing.webhook ? { webhook: existing.webhook } : {}),
+    };
+  }
+
+  async function savePolicy(tenantId) {
+    try {
+      const data = collectFormData();
+      const r = await fetch(`${API_BASE}/policy/${encodeURIComponent(tenantId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      _allTenants[tenantId] = data;
+      showToast('Policy saved', 'success');
+    } catch(e) {
+      showToast('Save failed: ' + e.message, 'error');
+    }
+  }
+
+  function revertForm(tenantId) {
+    renderPolicyForm(tenantId, _allTenants[tenantId] || {});
+  }
+
+  async function deleteTenant(e, tenantId) {
+    e.stopPropagation();
+    if (!confirm(`Delete tenant "${tenantId}"? This cannot be undone.`)) return;
+    try {
+      const r = await fetch(`${API_BASE}/policy/${encodeURIComponent(tenantId)}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error(await r.text());
+      delete _allTenants[tenantId];
+      if (_activeTenant === tenantId) {
+        _activeTenant = null;
+        document.getElementById('policy-form-panel').innerHTML =
+          '<div style="padding:60px;text-align:center;color:var(--muted)">Select a tenant to edit its policy</div>';
+      }
+      renderTenantList(Object.keys(_allTenants));
+      showToast(`Tenant "${tenantId}" deleted`, 'success');
+    } catch(e) {
+      showToast('Delete failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── New tenant modal ───────────────────────────────────────────────────────
+
+  function openNewTenantModal() {
+    document.getElementById('new-tenant-name').value = '';
+    document.getElementById('new-tenant-modal').classList.add('open');
+    setTimeout(() => document.getElementById('new-tenant-name').focus(), 50);
+  }
+
+  function closeNewTenantModal() {
+    document.getElementById('new-tenant-modal').classList.remove('open');
+  }
+
+  async function createTenant() {
+    const name = document.getElementById('new-tenant-name').value.trim();
+    if (!name || !/^[a-z0-9_-]+$/i.test(name)) {
+      showToast('Invalid tenant name (use letters, numbers, - _)', 'error');
+      return;
+    }
+    if (_allTenants[name]) {
+      showToast('Tenant already exists', 'error');
+      return;
+    }
+    // Create with defaults from the 'default' tenant as a base
+    const defaults = _allTenants['default'] || {};
+    const newCfg = JSON.parse(JSON.stringify(defaults));
+    delete newCfg.upstream_api_key; // don't copy secrets
+
+    try {
+      const r = await fetch(`${API_BASE}/policy/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCfg),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      _allTenants[name] = newCfg;
+      renderTenantList(Object.keys(_allTenants));
+      closeNewTenantModal();
+      selectTenant(name);
+      showToast(`Tenant "${name}" created`, 'success');
+    } catch(e) {
+      showToast('Create failed: ' + e.message, 'error');
+    }
+  }
+
+  document.getElementById('new-tenant-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') createTenant();
+    if (e.key === 'Escape') closeNewTenantModal();
+  });
+
+  document.getElementById('new-tenant-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeNewTenantModal();
+  });
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+
+  let _toastTimer;
+  function showToast(msg, type='success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+
+  function esc(str) {
     if (!str) return '';
     return String(str)
       .replace(/&/g, '&amp;')
@@ -416,7 +1084,8 @@
       .replace(/"/g, '&quot;');
   }
 
-  // Auto-refresh every 10 seconds
+  // ── Init ───────────────────────────────────────────────────────────────────
+
   refresh();
   setInterval(refresh, 10000);
 </script>

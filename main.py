@@ -19,6 +19,7 @@ Anthropic clients:
 import time
 import os
 import httpx
+import yaml
 from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -308,3 +309,61 @@ async def auth_status():
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "0.2.0", "timestamp": time.time()}
+
+
+# ── Policy editor routes ───────────────────────────────────────────────────────
+
+_POLICY_FILE = os.path.join(os.path.dirname(__file__), "policy.yaml")
+
+
+def _load_raw_policy() -> dict:
+    with open(_POLICY_FILE) as f:
+        return yaml.safe_load(f) or {}
+
+
+def _save_raw_policy(raw: dict) -> None:
+    with open(_POLICY_FILE, "w") as f:
+        yaml.safe_dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
+@app.get("/policy")
+async def list_policy():
+    """Return all tenant names and their raw configs."""
+    raw = _load_raw_policy()
+    return {"tenants": list(raw.get("tenants", {}).keys()), "config": raw.get("tenants", {})}
+
+
+@app.get("/policy/{tenant_id}")
+async def get_tenant_policy(tenant_id: str):
+    """Return raw config for a specific tenant."""
+    raw = _load_raw_policy()
+    tenants = raw.get("tenants", {})
+    if tenant_id not in tenants:
+        raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
+    return tenants[tenant_id]
+
+
+@app.put("/policy/{tenant_id}")
+async def update_tenant_policy(tenant_id: str, request: Request):
+    """Overwrite config for a tenant in policy.yaml. Creates tenant if it doesn't exist."""
+    updates = await request.json()
+    raw = _load_raw_policy()
+    if "tenants" not in raw:
+        raw["tenants"] = {}
+    raw["tenants"][tenant_id] = updates
+    _save_raw_policy(raw)
+    return {"status": "ok", "tenant_id": tenant_id}
+
+
+@app.delete("/policy/{tenant_id}")
+async def delete_tenant_policy(tenant_id: str):
+    """Remove a tenant from policy.yaml. Cannot delete 'default'."""
+    if tenant_id == "default":
+        raise HTTPException(status_code=400, detail="Cannot delete the default tenant policy")
+    raw = _load_raw_policy()
+    tenants = raw.get("tenants", {})
+    if tenant_id not in tenants:
+        raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
+    del raw["tenants"][tenant_id]
+    _save_raw_policy(raw)
+    return {"status": "ok", "tenant_id": tenant_id}
