@@ -24,13 +24,15 @@ from typing import Optional
 
 def _row_to_dict(row) -> dict:
     return {
-        "id":        row["id"],
-        "timestamp": row["ts"],
-        "tenant_id": row["tenant_id"],
-        "api":       row["api"],
-        "outcome":   row["outcome"],
-        "reason":    row["reason"],
-        "messages":  json.loads(row["request"] or "[]"),
+        "id":               row["id"],
+        "timestamp":        row["ts"],
+        "tenant_id":        row["tenant_id"],
+        "api":              row["api"],
+        "outcome":          row["outcome"],
+        "reason":           row["reason"],
+        "messages":         json.loads(row["request"] or "[]"),
+        "prompt_tokens":    row["prompt_tokens"],
+        "completion_tokens": row["completion_tokens"],
     }
 
 
@@ -49,27 +51,37 @@ class SQLiteBackend:
         with self._conn() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS audit_log (
-                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ts        REAL    NOT NULL,
-                    tenant_id TEXT    NOT NULL,
-                    api       TEXT    NOT NULL DEFAULT 'openai',
-                    outcome   TEXT    NOT NULL,
-                    reason    TEXT,
-                    request   TEXT
+                    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts               REAL    NOT NULL,
+                    tenant_id        TEXT    NOT NULL,
+                    api              TEXT    NOT NULL DEFAULT 'openai',
+                    outcome          TEXT    NOT NULL,
+                    reason           TEXT,
+                    request          TEXT,
+                    prompt_tokens    INTEGER,
+                    completion_tokens INTEGER
                 )
             """)
-            try:
-                conn.execute("ALTER TABLE audit_log ADD COLUMN api TEXT NOT NULL DEFAULT 'openai'")
-            except Exception:
-                pass  # column already exists
+            for col, defn in [
+                ("api", "TEXT NOT NULL DEFAULT 'openai'"),
+                ("prompt_tokens", "INTEGER"),
+                ("completion_tokens", "INTEGER"),
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE audit_log ADD COLUMN {col} {defn}")
+                except Exception:
+                    pass  # column already exists
 
-    def log(self, tenant_id, outcome, reason, body, api):
+    def log(self, tenant_id, outcome, reason, body, api, usage=None):
         messages = body.get("messages", [])
+        pt = usage.get("prompt_tokens") if usage else None
+        ct = usage.get("completion_tokens") if usage else None
         try:
             with self._conn() as conn:
                 conn.execute(
-                    "INSERT INTO audit_log (ts, tenant_id, api, outcome, reason, request) VALUES (?,?,?,?,?,?)",
-                    (time.time(), tenant_id, api, outcome, reason, json.dumps(messages)),
+                    "INSERT INTO audit_log (ts, tenant_id, api, outcome, reason, request, prompt_tokens, completion_tokens) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (time.time(), tenant_id, api, outcome, reason, json.dumps(messages), pt, ct),
                 )
         except Exception as e:
             print(f"[audit/sqlite] write failed: {e}")
@@ -117,6 +129,48 @@ class SQLiteBackend:
             "top_block_reasons": [{"reason": r[0], "count": r[1]} for r in reasons],
         }
 
+    def get_token_metrics(self, tenant_id, days):
+        since = time.time() - days * 86400
+        conditions = ["ts >= ?"]
+        params = [since]
+        if tenant_id:
+            conditions.append("tenant_id = ?")
+            params.append(tenant_id)
+        where = "WHERE " + " AND ".join(conditions)
+
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT tenant_id, api, "
+                f"COUNT(*) as requests, "
+                f"COALESCE(SUM(prompt_tokens), 0) as input_tokens, "
+                f"COALESCE(SUM(completion_tokens), 0) as output_tokens "
+                f"FROM audit_log {where} "
+                f"GROUP BY tenant_id, api ORDER BY input_tokens + output_tokens DESC",
+                params,
+            ).fetchall()
+
+        result = {}
+        for r in rows:
+            tid = r[0]
+            if tid not in result:
+                result[tid] = {"tenant_id": tid, "requests": 0, "input_tokens": 0, "output_tokens": 0, "by_api": {}}
+            result[tid]["requests"]     += r[2]
+            result[tid]["input_tokens"] += r[3]
+            result[tid]["output_tokens"] += r[4]
+            result[tid]["by_api"][r[1]]  = {"requests": r[2], "input_tokens": r[3], "output_tokens": r[4]}
+
+        tenants = list(result.values())
+        for t in tenants:
+            t["total_tokens"] = t["input_tokens"] + t["output_tokens"]
+
+        totals = {
+            "requests":     sum(t["requests"] for t in tenants),
+            "input_tokens": sum(t["input_tokens"] for t in tenants),
+            "output_tokens": sum(t["output_tokens"] for t in tenants),
+            "total_tokens": sum(t["total_tokens"] for t in tenants),
+        }
+        return {"period_days": days, "tenants": tenants, "totals": totals}
+
 
 # ── Postgres backend ──────────────────────────────────────────────────────────
 
@@ -154,27 +208,43 @@ class PostgresBackend:
             with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS audit_log (
-                        id        SERIAL PRIMARY KEY,
-                        ts        DOUBLE PRECISION NOT NULL,
-                        tenant_id TEXT             NOT NULL,
-                        api       TEXT             NOT NULL DEFAULT 'openai',
-                        outcome   TEXT             NOT NULL,
-                        reason    TEXT,
-                        request   TEXT
+                        id                SERIAL PRIMARY KEY,
+                        ts                DOUBLE PRECISION NOT NULL,
+                        tenant_id         TEXT             NOT NULL,
+                        api               TEXT             NOT NULL DEFAULT 'openai',
+                        outcome           TEXT             NOT NULL,
+                        reason            TEXT,
+                        request           TEXT,
+                        prompt_tokens     INTEGER,
+                        completion_tokens INTEGER
                     )
                 """)
+                for col, defn in [
+                    ("api", "TEXT NOT NULL DEFAULT 'openai'"),
+                    ("prompt_tokens", "INTEGER"),
+                    ("completion_tokens", "INTEGER"),
+                ]:
+                    cur.execute(f"""
+                        DO $$ BEGIN
+                            ALTER TABLE audit_log ADD COLUMN {col} {defn};
+                        EXCEPTION WHEN duplicate_column THEN NULL;
+                        END $$
+                    """)
             conn.commit()
         finally:
             self._release(conn)
 
-    def log(self, tenant_id, outcome, reason, body, api):
+    def log(self, tenant_id, outcome, reason, body, api, usage=None):
         messages = body.get("messages", [])
+        pt = usage.get("prompt_tokens") if usage else None
+        ct = usage.get("completion_tokens") if usage else None
         conn = self._conn()
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO audit_log (ts, tenant_id, api, outcome, reason, request) VALUES (%s,%s,%s,%s,%s,%s)",
-                    (time.time(), tenant_id, api, outcome, reason, json.dumps(messages)),
+                    "INSERT INTO audit_log (ts, tenant_id, api, outcome, reason, request, prompt_tokens, completion_tokens) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (time.time(), tenant_id, api, outcome, reason, json.dumps(messages), pt, ct),
                 )
             conn.commit()
         except Exception as e:
@@ -241,6 +311,53 @@ class PostgresBackend:
             "top_block_reasons": [{"reason": r[0], "count": r[1]} for r in reasons],
         }
 
+    def get_token_metrics(self, tenant_id, days):
+        since = time.time() - days * 86400
+        conditions = ["ts >= %s"]
+        params = [since]
+        if tenant_id:
+            conditions.append("tenant_id = %s")
+            params.append(tenant_id)
+        where = "WHERE " + " AND ".join(conditions)
+
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT tenant_id, api, "
+                    f"COUNT(*) as requests, "
+                    f"COALESCE(SUM(prompt_tokens), 0) as input_tokens, "
+                    f"COALESCE(SUM(completion_tokens), 0) as output_tokens "
+                    f"FROM audit_log {where} "
+                    f"GROUP BY tenant_id, api ORDER BY input_tokens + output_tokens DESC",
+                    params,
+                )
+                rows = cur.fetchall()
+        finally:
+            self._release(conn)
+
+        result = {}
+        for r in rows:
+            tid = r[0]
+            if tid not in result:
+                result[tid] = {"tenant_id": tid, "requests": 0, "input_tokens": 0, "output_tokens": 0, "by_api": {}}
+            result[tid]["requests"]      += r[2]
+            result[tid]["input_tokens"]  += r[3]
+            result[tid]["output_tokens"] += r[4]
+            result[tid]["by_api"][r[1]]   = {"requests": r[2], "input_tokens": r[3], "output_tokens": r[4]}
+
+        tenants = list(result.values())
+        for t in tenants:
+            t["total_tokens"] = t["input_tokens"] + t["output_tokens"]
+
+        totals = {
+            "requests":      sum(t["requests"] for t in tenants),
+            "input_tokens":  sum(t["input_tokens"] for t in tenants),
+            "output_tokens": sum(t["output_tokens"] for t in tenants),
+            "total_tokens":  sum(t["total_tokens"] for t in tenants),
+        }
+        return {"period_days": days, "tenants": tenants, "totals": totals}
+
 
 # ── Public interface ──────────────────────────────────────────────────────────
 
@@ -258,11 +375,15 @@ class AuditLogger:
         else:
             self._backend = SQLiteBackend()
 
-    def log(self, tenant_id: str, outcome: str, reason: Optional[str], body: dict, api: str = "openai"):
-        self._backend.log(tenant_id, outcome, reason, body, api)
+    def log(self, tenant_id: str, outcome: str, reason: Optional[str], body: dict, api: str = "openai",
+            usage: Optional[dict] = None):
+        self._backend.log(tenant_id, outcome, reason, body, api, usage)
 
     def get_recent(self, limit: int = 50, tenant_id: Optional[str] = None, api: Optional[str] = None) -> list[dict]:
         return self._backend.get_recent(limit, tenant_id, api)
 
     def get_stats(self, tenant_id: Optional[str] = None) -> dict:
         return self._backend.get_stats(tenant_id)
+
+    def get_token_metrics(self, tenant_id: Optional[str] = None, days: int = 7) -> dict:
+        return self._backend.get_token_metrics(tenant_id, days)

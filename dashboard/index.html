@@ -585,6 +585,37 @@
         </div>
       </div>
     </div>
+
+    <!-- Token usage panel -->
+    <div class="panel" style="margin-bottom:28px">
+      <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Token Usage</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0">Last</span>
+          <select id="metrics-days" onchange="loadMetrics()" style="padding:3px 8px;font-size:12px">
+            <option value="1">24 hours</option>
+            <option value="7" selected>7 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow:auto">
+        <table id="metrics-table">
+          <thead>
+            <tr>
+              <th>Tenant</th>
+              <th>Requests</th>
+              <th>Input tokens</th>
+              <th>Output tokens</th>
+              <th>Total tokens</th>
+            </tr>
+          </thead>
+          <tbody id="metrics-body">
+            <tr><td colspan="5" class="empty">No token data yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -653,7 +684,7 @@
   }
 
   async function refresh() {
-    await Promise.all([loadStats(), loadFeed()]);
+    await Promise.all([loadStats(), loadFeed(), loadMetrics()]);
   }
 
   async function loadStats() {
@@ -730,6 +761,45 @@
       return text ? text.text.slice(0, 120) : '(non-text content)';
     }
     return '—';
+  }
+
+  async function loadMetrics() {
+    const days = document.getElementById('metrics-days')?.value || 7;
+    try {
+      const r = await fetch(`${API_BASE}/metrics${qs({ tenant_id: tenant(), days })}`);
+      const d = await r.json();
+      const tbody = document.getElementById('metrics-body');
+
+      if (!d.tenants || !d.tenants.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No token data yet — token counts are recorded on successful non-streaming requests</td></tr>';
+        return;
+      }
+
+      const fmt = n => n == null ? '—' : n.toLocaleString();
+      const rows = d.tenants.map(t => `
+        <tr>
+          <td>${esc(t.tenant_id)}</td>
+          <td>${fmt(t.requests)}</td>
+          <td>${fmt(t.input_tokens)}</td>
+          <td>${fmt(t.output_tokens)}</td>
+          <td style="font-weight:600">${fmt(t.total_tokens)}</td>
+        </tr>
+      `).join('');
+
+      const totals = d.totals;
+      const footer = `
+        <tr style="border-top:2px solid var(--border);color:var(--muted)">
+          <td style="font-weight:600">Total</td>
+          <td>${fmt(totals.requests)}</td>
+          <td>${fmt(totals.input_tokens)}</td>
+          <td>${fmt(totals.output_tokens)}</td>
+          <td style="font-weight:600">${fmt(totals.total_tokens)}</td>
+        </tr>
+      `;
+      tbody.innerHTML = rows + footer;
+    } catch(e) {
+      console.error('Metrics load failed:', e);
+    }
   }
 
   // ── Policy Editor ──────────────────────────────────────────────────────────

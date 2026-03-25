@@ -209,7 +209,12 @@ async def proxy_openai(
             webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "openai", "toxicity", tox_error, body.get("messages", []))
             raise HTTPException(status_code=502, detail={"error": "response_blocked", "reason": tox_error, "guardrail": "toxicity"})
 
-    audit.log(tenant_id, "passed", None, body, "openai")
+    usage = response_data.get("usage", {})
+    openai_usage = {
+        "prompt_tokens":    usage.get("prompt_tokens"),
+        "completion_tokens": usage.get("completion_tokens"),
+    } if usage else None
+    audit.log(tenant_id, "passed", None, body, "openai", openai_usage)
     return JSONResponse(response_data)
 
 
@@ -327,7 +332,12 @@ async def proxy_anthropic(
                 "error": {"type": "api_error", "message": f"Response blocked by guardrail (toxicity): {tox_error}"},
             })
 
-    audit.log(tenant_id, "passed", None, body, "anthropic")
+    usage = response_data.get("usage", {})
+    anthropic_usage = {
+        "prompt_tokens":    usage.get("input_tokens"),
+        "completion_tokens": usage.get("output_tokens"),
+    } if usage else None
+    audit.log(tenant_id, "passed", None, body, "anthropic", anthropic_usage)
     return JSONResponse(response_data)
 
 
@@ -354,6 +364,12 @@ async def get_rate_limits(tenant_id: str = "default"):
 async def get_stats(tenant_id: Optional[str] = None):
     """Aggregated stats for the dashboard."""
     return audit.get_stats(tenant_id=tenant_id)
+
+
+@app.get("/metrics")
+async def get_metrics(tenant_id: Optional[str] = None, days: int = 7):
+    """Token usage and request counts per tenant over the last N days."""
+    return audit.get_token_metrics(tenant_id=tenant_id, days=days)
 
 
 @app.get("/auth-status")
