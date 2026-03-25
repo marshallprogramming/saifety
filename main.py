@@ -31,12 +31,15 @@ from streaming import stream_openai, stream_anthropic
 from rate_limiter import RateLimiter
 from auth import KeyStore, _extract_bearer
 from webhooks import WebhookDispatcher
+from toxicity import ToxicityChecker
+from guardrails.content_utils import get_text
 
-app = FastAPI(title="AI Guardrail Proxy", version="0.5.0")
+app = FastAPI(title="AI Guardrail Proxy", version="0.6.0")
 audit = AuditLogger()
 limiter = RateLimiter()
 keystore = KeyStore()
 webhook = WebhookDispatcher()
+toxicity = ToxicityChecker()
 
 _DASHBOARD_DIR = os.path.join(os.path.dirname(__file__), "dashboard")
 
@@ -108,7 +111,7 @@ async def proxy_openai(
 
     # Streaming path
     if body.get("stream"):
-        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook)
+        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity)
 
     # Non-streaming path
     try:
@@ -133,6 +136,14 @@ async def proxy_openai(
                 "guardrail": output_result.guardrail,
             })
         response_data["choices"] = output_result.data
+
+        # Async toxicity check (wordlist, OpenAI Moderation, or Perspective)
+        response_text = get_text(response_data["choices"][0].get("message", {}).get("content", "")) if response_data["choices"] else ""
+        tox_error = await toxicity.check(response_text, policy.output.toxicity)
+        if tox_error:
+            audit.log(tenant_id, "output_blocked", tox_error, body, "openai")
+            webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "openai", "toxicity", tox_error, body.get("messages", []))
+            raise HTTPException(status_code=502, detail={"error": "response_blocked", "reason": tox_error, "guardrail": "toxicity"})
 
     audit.log(tenant_id, "passed", None, body, "openai")
     return JSONResponse(response_data)
@@ -209,7 +220,7 @@ async def proxy_anthropic(
 
     # Streaming path
     if body.get("stream"):
-        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook)
+        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity)
 
     # Non-streaming path
     try:
@@ -237,6 +248,20 @@ async def proxy_anthropic(
                 }
             })
         response_data["content"] = output_result.data
+
+    # Async toxicity check
+    if "content" in response_data and isinstance(response_data["content"], list):
+        response_text = " ".join(
+            b.get("text", "") for b in response_data["content"] if b.get("type") == "text"
+        )
+        tox_error = await toxicity.check(response_text, policy.output.toxicity)
+        if tox_error:
+            audit.log(tenant_id, "output_blocked", tox_error, body, "anthropic")
+            webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "anthropic", "toxicity", tox_error, body.get("messages", []))
+            raise HTTPException(status_code=502, detail={
+                "type": "error",
+                "error": {"type": "api_error", "message": f"Response blocked by guardrail (toxicity): {tox_error}"},
+            })
 
     audit.log(tenant_id, "passed", None, body, "anthropic")
     return JSONResponse(response_data)

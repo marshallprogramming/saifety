@@ -33,18 +33,20 @@ tenants:
       max_length: null          # null = no limit
       toxicity:
         enabled: true
-        action: block
+        provider: wordlist      # "wordlist" | "openai" | "perspective"
+        # api_key: "${OPENAI_API_KEY}"   # required for openai/perspective providers
+        # threshold: 0.8                # perspective only — 0.0–1.0
       json_schema: null         # null = no schema enforcement
 
     rate_limit:
-      enabled: false            # disabled by default — enable per tenant as needed
+      enabled: false
       requests_per_minute: 60
       requests_per_hour: 1000
 
     webhook:
       enabled: false
-      url: "${WEBHOOK_URL}"     # set env var or paste URL directly
-      secret: "${WEBHOOK_SECRET}"  # optional — used to sign payloads
+      url: "${WEBHOOK_URL}"
+      secret: "${WEBHOOK_SECRET}"
       on:
         - input_blocked
         - output_blocked
@@ -57,7 +59,7 @@ tenants:
     input:
       pii:
         enabled: true
-        action: block           # reject rather than redact
+        action: block
         types:
           - email
           - phone
@@ -81,7 +83,8 @@ tenants:
       max_length: 2000
       toxicity:
         enabled: true
-        action: block
+        provider: openai        # upgrade to ML-based for customer-facing tenants
+        api_key: "${OPENAI_API_KEY}"
 
     rate_limit:
       enabled: true
@@ -89,7 +92,7 @@ tenants:
       requests_per_hour: 200
 
     webhook:
-      enabled: false            # set to true and add url to enable Slack/PagerDuty alerts
+      enabled: false
       url: "${WEBHOOK_URL}"
       secret: "${WEBHOOK_SECRET}"
       on:
@@ -120,11 +123,9 @@ tenants:
       max_length: null
       toxicity:
         enabled: false
-        action: block
+        provider: wordlist
 
   # ── Anthropic / Claude example ────────────────────────────────────────────
-  # Note: the upstream_url for Anthropic is handled automatically by the
-  # /v1/messages route — this entry is here for PII/topic overrides only.
   anthropic_strict:
     input:
       pii:
@@ -148,7 +149,8 @@ tenants:
       max_length: 4000
       toxicity:
         enabled: true
-        action: block
+        provider: openai
+        api_key: "${OPENAI_API_KEY}"
 
   # ── Structured-output policy (enforces JSON schema on responses) ───────────
   structured:
@@ -175,7 +177,7 @@ tenants:
       max_length: 5000
       toxicity:
         enabled: true
-        action: block
+        provider: wordlist
       json_schema:
         type: object
         required:

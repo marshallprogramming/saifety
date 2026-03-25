@@ -46,10 +46,17 @@ class InputPolicy:
 
 
 @dataclass
+class ToxicityConfig:
+    enabled: bool = True
+    provider: str = "wordlist"        # "wordlist" | "openai" | "perspective"
+    threshold: float = 0.8            # used by the perspective provider
+    api_key: Optional[str] = None     # openai key or perspective key
+
+
+@dataclass
 class OutputPolicy:
     max_length: Optional[int] = None
-    toxicity_enabled: bool = False
-    toxicity_action: str = "block"
+    toxicity: ToxicityConfig = field(default_factory=ToxicityConfig)
     json_schema: Optional[dict] = None     # if set, validate response against this schema
 
 
@@ -135,8 +142,12 @@ class PolicyEngine:
             ),
             output=OutputPolicy(
                 max_length=output_cfg.get("max_length"),
-                toxicity_enabled=tox_raw.get("enabled", False),
-                toxicity_action=tox_raw.get("action", "block"),
+                toxicity=ToxicityConfig(
+                    enabled=tox_raw.get("enabled", True),
+                    provider=tox_raw.get("provider", "wordlist"),
+                    threshold=tox_raw.get("threshold", 0.8),
+                    api_key=_resolve_env(tox_raw.get("api_key")),
+                ),
                 json_schema=output_cfg.get("json_schema"),
             ),
             rate_limit=RateLimitConfig(

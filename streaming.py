@@ -16,9 +16,10 @@ from fastapi.responses import StreamingResponse
 from typing import Optional
 
 from pipeline import GuardrailPipeline
-from policy import WebhookConfig
+from policy import WebhookConfig, ToxicityConfig
 from audit import AuditLogger
 from webhooks import WebhookDispatcher
+from toxicity import ToxicityChecker
 
 # Read timeout is None so long generations don't time out mid-stream.
 _STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=10.0, pool=10.0)
@@ -35,10 +36,13 @@ def stream_openai(
     audit: AuditLogger,
     webhook: WebhookDispatcher,
     webhook_config: WebhookConfig,
+    toxicity_checker: ToxicityChecker = None,
+    toxicity_config: ToxicityConfig = None,
 ) -> StreamingResponse:
 
     async def generate():
         accumulated = ""
+        tox_last_len = 0
 
         try:
             async with httpx.AsyncClient(timeout=_STREAM_TIMEOUT) as client:
@@ -86,6 +90,20 @@ def stream_openai(
                                 yield "data: [DONE]\n\n"
                                 return
 
+                            if toxicity_checker and toxicity_config:
+                                tox_error, tox_last_len = await toxicity_checker.check_stream(
+                                    accumulated, toxicity_config, tox_last_len
+                                )
+                                if tox_error:
+                                    audit.log(tenant_id, "output_blocked", tox_error, body, "openai")
+                                    webhook.dispatch(webhook_config, "output_blocked", tenant_id,
+                                                     "openai", "toxicity", tox_error,
+                                                     body.get("messages", []))
+                                    err_chunk = {"error": {"type": "guardrail_blocked", "message": tox_error}}
+                                    yield f"data: {json.dumps(err_chunk)}\n\n"
+                                    yield "data: [DONE]\n\n"
+                                    return
+
                         yield f"{raw_line}\n\n"
 
         except httpx.HTTPStatusError as e:
@@ -111,6 +129,8 @@ def stream_anthropic(
     audit: AuditLogger,
     webhook: WebhookDispatcher,
     webhook_config: WebhookConfig,
+    toxicity_checker: ToxicityChecker = None,
+    toxicity_config: ToxicityConfig = None,
 ) -> StreamingResponse:
     """
     Anthropic streams Server-Sent Events with explicit event: lines.
@@ -120,6 +140,7 @@ def stream_anthropic(
     async def generate():
         accumulated = ""
         current_event: Optional[str] = None
+        tox_last_len = 0
 
         try:
             async with httpx.AsyncClient(timeout=_STREAM_TIMEOUT) as client:
@@ -158,6 +179,20 @@ def stream_anthropic(
                                                                  body.get("messages", []))
                                                 yield _anthropic_error_event(error)
                                                 return
+
+                                            if toxicity_checker and toxicity_config:
+                                                tox_error, tox_last_len = await toxicity_checker.check_stream(
+                                                    accumulated, toxicity_config, tox_last_len
+                                                )
+                                                if tox_error:
+                                                    audit.log(tenant_id, "output_blocked",
+                                                              tox_error, body, "anthropic")
+                                                    webhook.dispatch(webhook_config, "output_blocked",
+                                                                     tenant_id, "anthropic",
+                                                                     "toxicity", tox_error,
+                                                                     body.get("messages", []))
+                                                    yield _anthropic_error_event(tox_error)
+                                                    return
                                 except json.JSONDecodeError:
                                     pass
 

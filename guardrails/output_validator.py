@@ -1,22 +1,18 @@
 """
-Output validator — runs after the upstream model responds.
+Output validator — runs synchronous checks after the upstream model responds.
 Handles both OpenAI (choices array) and Anthropic (content array) response formats.
-Checks: max length, basic toxicity word-list, optional JSON schema.
+
+Checks: max length, optional JSON schema.
+
+Toxicity checking has been moved to toxicity.py (async, ML-capable).
 """
 
 import json
 import copy
-import re
 from typing import Optional
 from guardrails.base import GuardrailResult
 from guardrails.content_utils import get_text
 from policy import OutputPolicy
-
-_TOXIC_PATTERNS = [
-    r"\b(kill yourself|kys|go die)\b",
-    r"\b(n[i1]gg[ae]r|f[a4]gg[o0]t|ch[i1]nk|sp[i1]c)\b",
-]
-_compiled_toxic = [re.compile(p, re.IGNORECASE) for p in _TOXIC_PATTERNS]
 
 
 class OutputValidator:
@@ -28,13 +24,11 @@ class OutputValidator:
     def check(self, choices: list[dict]) -> GuardrailResult:
         """Validate OpenAI-format choices array."""
         working = copy.deepcopy(choices)
-
         for choice in working:
             text = get_text(choice.get("message", {}).get("content", ""))
             error = self._validate_text(text)
             if error:
                 return GuardrailResult(blocked=True, reason=error, choices=choices)
-
         return GuardrailResult(blocked=False, choices=working)
 
     # ── Anthropic format ──────────────────────────────────────────────────────
@@ -42,29 +36,21 @@ class OutputValidator:
     def check_anthropic(self, content_blocks: list[dict]) -> GuardrailResult:
         """Validate Anthropic-format content block array."""
         working = copy.deepcopy(content_blocks)
-        text = get_text(working)  # content_utils handles block arrays
+        text = get_text(working)
         error = self._validate_text(text)
         if error:
             return GuardrailResult(blocked=True, reason=error)
+        return GuardrailResult(blocked=False, choices=working)
 
-        return GuardrailResult(blocked=False, choices=working)  # reusing choices field
-
-    # ── Streaming (incremental) ───────────────────────────────────────────────
+    # ── Streaming (incremental, sync only) ───────────────────────────────────
 
     def check_stream(self, accumulated_text: str) -> Optional[str]:
         """
-        Check accumulated text so far during a streaming response.
-        JSON schema validation is skipped — partial responses are never valid JSON.
-        Returns an error string if blocked, None if clean.
+        Sync checks on accumulated streaming text (max_length only).
+        Toxicity is checked separately via ToxicityChecker.check_stream().
         """
         if self.config.max_length and len(accumulated_text) > self.config.max_length:
             return f"Response exceeds max length ({len(accumulated_text)} > {self.config.max_length} chars)"
-
-        if self.config.toxicity_enabled:
-            for pattern in _compiled_toxic:
-                if pattern.search(accumulated_text):
-                    return "Response contains toxic content"
-
         return None
 
     # ── Shared validation logic ───────────────────────────────────────────────
@@ -72,11 +58,6 @@ class OutputValidator:
     def _validate_text(self, text: str) -> Optional[str]:
         if self.config.max_length and len(text) > self.config.max_length:
             return f"Response exceeds max length ({len(text)} > {self.config.max_length} chars)"
-
-        if self.config.toxicity_enabled:
-            for pattern in _compiled_toxic:
-                if pattern.search(text):
-                    return "Response contains toxic content"
 
         if self.config.json_schema:
             try:
