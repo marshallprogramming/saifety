@@ -3,17 +3,136 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary meta -->
     <title>sAIfety — Automatic AI Guardrails for Every App</title>
-    <meta
-      name="description"
-      content="A drop-in proxy that adds safety guardrails to every OpenAI and Anthropic API call. PII redaction, prompt injection blocking, topic filtering — configured in YAML, zero code changes."
-    />
-    <meta property="og:title" content="sAIfety — Automatic AI Guardrails" />
-    <meta
-      property="og:description"
-      content="One proxy. Every guardrail. Works with OpenAI and Anthropic out of the box."
-    />
-    <meta property="og:type" content="website" />
+    <meta name="description" content="A drop-in proxy that adds safety guardrails to every OpenAI and Anthropic API call. PII redaction, prompt injection blocking, topic filtering, toxicity detection — configured in YAML, zero code changes." />
+    <meta name="keywords" content="AI guardrails, LLM safety, OpenAI proxy, Anthropic proxy, PII redaction, prompt injection blocking, AI content moderation, LLM security, AI safety middleware" />
+    <meta name="author" content="sAIfety" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://saifety.dev" />
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://saifety.dev" />
+    <meta property="og:site_name"   content="sAIfety" />
+    <meta property="og:title"       content="sAIfety — Automatic AI Guardrails for Every App" />
+    <meta property="og:description" content="One proxy. Every guardrail. Works with OpenAI and Anthropic out of the box. Change one line of code — every AI call in your app is covered." />
+    <meta property="og:image"       content="https://saifety.dev/og-image.png" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"   content="sAIfety — drop-in AI guardrail proxy" />
+    <meta property="og:locale"      content="en_US" />
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="sAIfety — Automatic AI Guardrails for Every App" />
+    <meta name="twitter:description" content="Drop-in proxy for OpenAI and Anthropic. PII redaction, prompt injection blocking, topic filtering, toxicity detection. One URL change, zero code changes." />
+    <meta name="twitter:image"       content="https://saifety.dev/og-image.png" />
+
+    <!-- JSON-LD structured data -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "sAIfety",
+        "url": "https://saifety.dev",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "description": "A drop-in proxy server that automatically applies safety guardrails to every OpenAI and Anthropic API call. Covers PII redaction, prompt injection blocking, topic filtering, toxicity detection, rate limiting, and audit logging — configured in YAML with no code changes required.",
+        "featureList": [
+          "PII detection and redaction (email, phone, SSN, credit card)",
+          "Prompt injection and jailbreak blocking",
+          "Keyword-based topic filtering",
+          "Toxicity detection (wordlist, OpenAI Moderation API, Google Perspective)",
+          "Per-tenant guardrail policies via YAML",
+          "Per-tenant rate limiting",
+          "Proxy authentication — AI keys never leave your infrastructure",
+          "Streaming support (SSE pass-through with incremental checks)",
+          "Webhook alerts on guardrail events",
+          "Full audit log (SQLite or Postgres)",
+          "Live dashboard with policy editor",
+          "Compatible with OpenAI and Anthropic SDKs"
+        ],
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "10,000 requests per month"
+          },
+          {
+            "@type": "Offer",
+            "name": "Starter",
+            "price": "49",
+            "priceCurrency": "USD",
+            "description": "100,000 requests per month"
+          },
+          {
+            "@type": "Offer",
+            "name": "Growth",
+            "price": "199",
+            "priceCurrency": "USD",
+            "description": "1,000,000 requests per month"
+          }
+        ],
+        "author": {
+          "@type": "Organization",
+          "name": "sAIfety",
+          "url": "https://saifety.dev"
+        },
+        "license": "https://github.com/marshallprogramming/saifety/blob/main/LICENSE",
+        "codeRepository": "https://github.com/marshallprogramming/saifety"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "sAIfety",
+        "url": "https://saifety.dev",
+        "description": "Automatic AI guardrails for every app — drop-in proxy for OpenAI and Anthropic APIs"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is sAIfety?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "sAIfety is a drop-in proxy server that sits between your application and OpenAI or Anthropic. It automatically applies safety guardrails — PII redaction, prompt injection blocking, topic filtering, and toxicity detection — to every AI request and response without requiring code changes."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does sAIfety work with OpenAI and Anthropic?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. sAIfety supports both the OpenAI API (via POST /v1/chat/completions) and the Anthropic Messages API (via POST /v1/messages). You only need to change the base_url in your existing client — no other code changes are required."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I integrate sAIfety into my app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Change one line: set base_url to your sAIfety proxy URL when initialising your OpenAI or Anthropic client. Your existing API key and all other code stays the same. All requests are then automatically checked against your configured guardrails."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is sAIfety open source?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. sAIfety is open source under the Apache 2.0 licence. The source code is available at github.com/marshallprogramming/saifety. A hosted, managed version is also available at saifety.dev."
+            }
+          }
+        ]
+      }
+    ]
+    </script>
 
     <style>
       *,
