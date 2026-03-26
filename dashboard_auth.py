@@ -27,7 +27,10 @@ _PASSWORD: Optional[str] = os.environ.get("DASHBOARD_PASSWORD")
 _SESSIONS: dict[str, str] = {}
 
 # Routes that bypass dashboard auth entirely
-PUBLIC_PATHS = {"/login", "/signup", "/health", "/favicon.ico", "/billing/webhook"}
+PUBLIC_PATHS = {
+    "/login", "/signup", "/health", "/favicon.ico", "/billing/webhook",
+    "/forgot-password", "/reset-password",
+}
 
 
 def is_proxy_path(path: str) -> bool:

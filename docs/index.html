@@ -882,6 +882,149 @@
       }
 
       /* ── CTA ── */
+      /* ── Pricing ── */
+      .pricing {
+        padding: 100px 24px;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .pricing-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 48px;
+      }
+
+      @media (max-width: 768px) {
+        .pricing-grid { grid-template-columns: 1fr; max-width: 360px; margin-left: auto; margin-right: auto; }
+      }
+
+      .plan-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 32px 28px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .plan-card.popular {
+        border-color: var(--accent);
+        background: rgba(99,102,241,0.05);
+      }
+
+      .plan-badge {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        padding: 3px 12px;
+        border-radius: 20px;
+        white-space: nowrap;
+      }
+
+      .plan-name {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .plan-desc {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 20px;
+        line-height: 1.5;
+      }
+
+      .plan-price {
+        font-size: 36px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 4px;
+      }
+
+      .plan-price sup {
+        font-size: 18px;
+        font-weight: 600;
+        vertical-align: super;
+        letter-spacing: 0;
+      }
+
+      .plan-period {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 28px;
+      }
+
+      .plan-features {
+        list-style: none;
+        flex: 1;
+        margin-bottom: 28px;
+      }
+
+      .plan-features li {
+        font-size: 13px;
+        color: var(--text);
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .plan-features li:last-child { border-bottom: none; }
+
+      .plan-features li::before {
+        content: "✓";
+        color: var(--accent);
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      .plan-cta {
+        display: block;
+        text-align: center;
+        padding: 11px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+
+      .plan-cta.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .plan-cta.primary:hover { opacity: 0.85; }
+
+      .plan-cta.secondary {
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .plan-cta.secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+      .plan-self-host {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .plan-self-host a { color: var(--accent); text-decoration: none; }
+
+      /* ── CTA ── */
       .cta {
         text-align: center;
         padding: 120px 24px;
@@ -997,6 +1140,7 @@
         <li><a href="#how-it-works">How it works</a></li>
         <li><a href="#guardrails">Guardrails</a></li>
         <li><a href="#dashboard">Dashboard</a></li>
+        <li><a href="#pricing">Pricing</a></li>
         <li>
           <a
             href="https://github.com/marshallprogramming/saifety"
@@ -1440,6 +1584,81 @@ response = client.messages.create(
               >
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+      <div class="container">
+        <div class="section-label">Pricing</div>
+        <h2 class="section-title">Free to self-host. Hosted plans start at $49.</h2>
+        <p class="section-sub">
+          Run sAIfety on your own infrastructure for free — forever. Or use our
+          hosted service and skip the ops work entirely.
+        </p>
+
+        <div class="pricing-grid">
+
+          <!-- Free -->
+          <div class="plan-card">
+            <div class="plan-name">Free</div>
+            <div class="plan-desc">Self-hosted. Full feature set, no restrictions.</div>
+            <div class="plan-price">$<span>0</span></div>
+            <div class="plan-period">forever</div>
+            <ul class="plan-features">
+              <li>Unlimited requests (self-hosted)</li>
+              <li>All guardrails included</li>
+              <li>OpenAI &amp; Anthropic support</li>
+              <li>Policy editor dashboard</li>
+              <li>Audit log &amp; token metrics</li>
+              <li>Community support</li>
+            </ul>
+            <a href="https://github.com/marshallprogramming/saifety" class="plan-cta secondary" target="_blank" rel="noopener">
+              Clone on GitHub →
+            </a>
+          </div>
+
+          <!-- Starter -->
+          <div class="plan-card popular">
+            <div class="plan-badge">Most popular</div>
+            <div class="plan-name">Starter</div>
+            <div class="plan-desc">Hosted. Great for small teams and side projects.</div>
+            <div class="plan-price"><sup>$</sup>49</div>
+            <div class="plan-period">per month</div>
+            <ul class="plan-features">
+              <li>100,000 requests / month</li>
+              <li>60 requests / minute</li>
+              <li>All guardrails included</li>
+              <li>Hosted dashboard</li>
+              <li>Email support</li>
+              <li>No infrastructure to manage</li>
+            </ul>
+            <a href="/signup" class="plan-cta primary">Get started free →</a>
+          </div>
+
+          <!-- Growth -->
+          <div class="plan-card">
+            <div class="plan-name">Growth</div>
+            <div class="plan-desc">Hosted. Built for production workloads.</div>
+            <div class="plan-price"><sup>$</sup>199</div>
+            <div class="plan-period">per month</div>
+            <ul class="plan-features">
+              <li>1,000,000 requests / month</li>
+              <li>200 requests / minute</li>
+              <li>All guardrails included</li>
+              <li>Hosted dashboard</li>
+              <li>Priority support</li>
+              <li>Custom webhook integrations</li>
+            </ul>
+            <a href="/signup" class="plan-cta secondary">Start free trial →</a>
+          </div>
+
+        </div>
+
+        <div class="plan-self-host">
+          Need higher limits or an on-prem license?
+          <a href="https://github.com/marshallprogramming/saifety/issues" target="_blank" rel="noopener">Get in touch →</a>
         </div>
       </div>
     </section>

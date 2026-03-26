@@ -41,6 +41,7 @@ import dashboard_auth as dash_auth
 from users import UserStore, PLANS, _POLICY_LOCK
 from billing import create_checkout_session, create_billing_portal_session
 from billing import handle_webhook as _stripe_webhook
+from email_utils import send_password_reset
 
 app = FastAPI(title="AI Guardrail Proxy", version="0.7.0")
 
@@ -160,6 +161,56 @@ async def logout(request: Request):
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("dash_session")
     return response
+
+
+@app.get("/forgot-password")
+async def forgot_password_page():
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "forgot-password.html"))
+
+
+@app.post("/forgot-password")
+async def forgot_password(request: Request):
+    form = await request.form()
+    email = form.get("email", "").strip().lower()
+    if not email:
+        return RedirectResponse(url="/forgot-password?error=invalid", status_code=302)
+
+    token = userstore.create_reset_token(email)
+    if token:
+        base = str(request.base_url).rstrip("/")
+        reset_url = f"{base}/reset-password?token={token}"
+        try:
+            send_password_reset(email, reset_url)
+        except Exception:
+            pass  # fail silently — don't reveal email validity
+
+    # Always redirect to the same confirmation page to avoid email enumeration
+    return RedirectResponse(url="/forgot-password?sent=1", status_code=302)
+
+
+@app.get("/reset-password")
+async def reset_password_page():
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "reset-password.html"))
+
+
+@app.post("/reset-password")
+async def reset_password(request: Request):
+    form = await request.form()
+    token    = form.get("token", "").strip()
+    password = form.get("password", "")
+
+    if not token or len(password) < 8:
+        return RedirectResponse(
+            url=f"/reset-password?token={token}&error=invalid", status_code=302
+        )
+
+    success = userstore.use_reset_token(token, password)
+    if not success:
+        return RedirectResponse(
+            url=f"/reset-password?token={token}&error=expired", status_code=302
+        )
+
+    return RedirectResponse(url="/login?reset=1", status_code=302)
 
 
 @app.get("/account")

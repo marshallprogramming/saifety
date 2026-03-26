@@ -102,6 +102,19 @@
     }
 
     .error.show { display: block; }
+
+    .success {
+      display: none;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: #22c55e;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    .success.show { display: block; }
   </style>
 </head>
 <body>
@@ -109,13 +122,17 @@
     <div class="logo"><span>Guardrail</span> Proxy</div>
     <div class="subtitle">Dashboard sign in</div>
 
+    <div class="success" id="ok">Password updated successfully. Sign in with your new password.</div>
     <div class="error" id="err">Incorrect email or password. Please try again.</div>
 
     <form method="POST" action="/login" id="form">
       <label for="email">Email <span style="font-weight:400;text-transform:none;font-size:11px">(leave blank for admin login)</span></label>
       <input type="email" id="email" name="email" placeholder="you@company.com" autocomplete="email" />
 
-      <label for="password">Password</label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label for="password" style="margin-bottom:0">Password</label>
+        <a href="/forgot-password" style="font-size:12px;color:var(--accent);text-decoration:none">Forgot password?</a>
+      </div>
       <input type="password" id="password" name="password" autofocus placeholder="Password" autocomplete="current-password" />
       <button type="submit">Sign In</button>
     </form>
@@ -127,6 +144,10 @@
   </div>
 
   <script>
+    if (new URLSearchParams(window.location.search).get('reset') === '1') {
+      document.getElementById('ok').classList.add('show');
+    }
+
     document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);

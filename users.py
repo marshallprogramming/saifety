@@ -196,6 +196,13 @@ class UserStore:
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_proxy_key ON users(proxy_key)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_stripe_customer ON users(stripe_customer_id)")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS reset_tokens (
+                    token      TEXT PRIMARY KEY,
+                    user_id    TEXT NOT NULL,
+                    expires_at REAL NOT NULL
+                )
+            """)
 
     def create_user(self, email: str, password: str) -> Optional[User]:
         """Register a new user. Returns None if the email is already taken."""
@@ -279,3 +286,47 @@ class UserStore:
                 "UPDATE users SET stripe_customer_id = ?, stripe_subscription_id = ? WHERE id = ?",
                 (customer_id, subscription_id, user_id),
             )
+
+    def create_reset_token(self, email: str) -> Optional[str]:
+        """
+        Generate a 1-hour password-reset token for the given email.
+        Returns the token, or None if the email isn't registered.
+        """
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM users WHERE email = ?", (email.lower().strip(),)
+            ).fetchone()
+        if row is None:
+            return None
+        token = secrets.token_urlsafe(32)
+        expires_at = time.time() + 3600  # 1 hour
+        with self._conn() as conn:
+            # Clean up any previous tokens for this user
+            conn.execute("DELETE FROM reset_tokens WHERE user_id = ?", (row["id"],))
+            conn.execute(
+                "INSERT INTO reset_tokens (token, user_id, expires_at) VALUES (?,?,?)",
+                (token, row["id"], expires_at),
+            )
+        return token
+
+    def use_reset_token(self, token: str, new_password: str) -> bool:
+        """
+        Validate a reset token, update the password, then delete the token.
+        Returns True on success, False if token is invalid or expired.
+        """
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT user_id, expires_at FROM reset_tokens WHERE token = ?", (token,)
+            ).fetchone()
+        if row is None or time.time() > row["expires_at"]:
+            if row:
+                with self._conn() as conn:
+                    conn.execute("DELETE FROM reset_tokens WHERE token = ?", (token,))
+            return False
+        pw_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, row["user_id"])
+            )
+            conn.execute("DELETE FROM reset_tokens WHERE token = ?", (token,))
+        return True
