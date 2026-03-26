@@ -33,35 +33,52 @@ from pipeline import GuardrailPipeline
 from audit import AuditLogger
 from streaming import stream_openai, stream_anthropic
 from rate_limiter import RateLimiter
-from auth import KeyStore, _extract_bearer
+from auth import KeyStore, ProxyKey, _extract_bearer
 from webhooks import WebhookDispatcher
 from toxicity import ToxicityChecker
 from guardrails.content_utils import get_text
 import dashboard_auth as dash_auth
+from users import UserStore, PLANS, _POLICY_LOCK
+from billing import create_checkout_session, create_billing_portal_session
+from billing import handle_webhook as _stripe_webhook
 
-app = FastAPI(title="AI Guardrail Proxy", version="0.6.0")
+app = FastAPI(title="AI Guardrail Proxy", version="0.7.0")
 
 
 class DashboardAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        # Proxy routes and public paths skip dashboard auth
         if dash_auth.is_proxy_path(path) or path in dash_auth.PUBLIC_PATHS:
             return await call_next(request)
 
+        # Dev mode — no password set and no user accounts required
         if not dash_auth.auth_enabled():
+            request.state.is_admin = True
+            request.state.user_id = None
+            request.state.tenant_id = None
             return await call_next(request)
 
         token = request.cookies.get("dash_session")
-        if dash_auth.validate_session(token):
-            return await call_next(request)
+        session_user = dash_auth.get_session_user(token)
 
-        # Unauthenticated — redirect HTML requests to login, return 401 for API
-        accept = request.headers.get("accept", "")
-        if "text/html" in accept:
-            return RedirectResponse(url="/login", status_code=302)
-        return JSONResponse({"error": "unauthenticated"}, status_code=401)
+        if session_user is None:
+            accept = request.headers.get("accept", "")
+            if "text/html" in accept:
+                return RedirectResponse(url="/login", status_code=302)
+            return JSONResponse({"error": "unauthenticated"}, status_code=401)
+
+        if session_user == "admin":
+            request.state.is_admin = True
+            request.state.user_id = None
+            request.state.tenant_id = None
+        else:
+            request.state.is_admin = False
+            request.state.user_id = session_user
+            user = userstore.get_by_id(session_user)
+            request.state.tenant_id = user.tenant_id if user else None
+
+        return await call_next(request)
 
 
 app.add_middleware(DashboardAuthMiddleware)
@@ -70,6 +87,7 @@ limiter = RateLimiter()
 keystore = KeyStore()
 webhook = WebhookDispatcher()
 toxicity = ToxicityChecker()
+userstore = UserStore()
 
 _DASHBOARD_DIR = os.path.join(os.path.dirname(__file__), "dashboard")
 
@@ -87,13 +105,50 @@ async def login_page():
 @app.post("/login")
 async def login(request: Request):
     form = await request.form()
+    email    = form.get("email", "").strip().lower()
     password = form.get("password", "")
-    if not dash_auth.check_password(password):
-        return FileResponse(os.path.join(_DASHBOARD_DIR, "login.html"), status_code=401,
-                            headers={"X-Login-Error": "1"})
-    token = dash_auth.create_session()
-    response = RedirectResponse(url="/", status_code=302)
-    response.set_cookie("dash_session", token, httponly=True, samesite="lax", max_age=86400)
+
+    # User email+password login
+    if email:
+        user = userstore.authenticate(email, password)
+        if user:
+            token = dash_auth.create_session(user.id)
+            response = RedirectResponse(url="/account", status_code=302)
+            response.set_cookie("dash_session", token, httponly=True, samesite="lax", max_age=86400 * 30)
+            return response
+        return FileResponse(os.path.join(_DASHBOARD_DIR, "login.html"), status_code=401)
+
+    # Admin password-only login
+    if dash_auth.check_password(password):
+        token = dash_auth.create_session("admin")
+        response = RedirectResponse(url="/", status_code=302)
+        response.set_cookie("dash_session", token, httponly=True, samesite="lax", max_age=86400)
+        return response
+
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "login.html"), status_code=401)
+
+
+@app.get("/signup")
+async def signup_page():
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "signup.html"))
+
+
+@app.post("/signup")
+async def signup(request: Request):
+    form = await request.form()
+    email    = form.get("email", "").strip().lower()
+    password = form.get("password", "")
+
+    if not email or not password or len(password) < 8:
+        return RedirectResponse(url="/signup?error=invalid", status_code=302)
+
+    user = userstore.create_user(email, password)
+    if user is None:
+        return RedirectResponse(url="/signup?error=email_taken", status_code=302)
+
+    token = dash_auth.create_session(user.id)
+    response = RedirectResponse(url="/account", status_code=302)
+    response.set_cookie("dash_session", token, httponly=True, samesite="lax", max_age=86400 * 30)
     return response
 
 
@@ -105,6 +160,94 @@ async def logout(request: Request):
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("dash_session")
     return response
+
+
+@app.get("/account")
+async def account_page():
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "account.html"))
+
+
+@app.get("/account/data")
+async def account_data(request: Request):
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Not a user session")
+    user = userstore.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404)
+    stats = audit.get_stats(tenant_id=user.tenant_id)
+    return {
+        "email":       user.email,
+        "proxy_key":   user.proxy_key,
+        "tenant_id":   user.tenant_id,
+        "plan":        user.plan,
+        "plan_info":   PLANS.get(user.plan, PLANS["free"]),
+        "has_ai_key":  user.has_ai_key,
+        "stats":       stats,
+    }
+
+
+@app.post("/account/ai-key")
+async def save_ai_key(request: Request):
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403)
+    form = await request.form()
+    ai_key = form.get("ai_key", "").strip()
+    if not ai_key:
+        raise HTTPException(status_code=400, detail="AI key required")
+    userstore.set_ai_key(user_id, ai_key)
+    return RedirectResponse(url="/account?saved=1", status_code=302)
+
+
+@app.post("/billing/checkout")
+async def billing_checkout(request: Request):
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403)
+    form = await request.form()
+    plan = form.get("plan", "")
+    if plan not in ("starter", "growth"):
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    user = userstore.get_by_id(user_id)
+    base = str(request.base_url).rstrip("/")
+    try:
+        url = create_checkout_session(
+            user, plan,
+            success_url=f"{base}/account?checkout=success",
+            cancel_url=f"{base}/account",
+        )
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return RedirectResponse(url=url, status_code=303)
+
+
+@app.post("/billing/webhook")
+async def billing_webhook(request: Request):
+    """Stripe webhook — must be in PUBLIC_PATHS (no session auth)."""
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    try:
+        result = _stripe_webhook(payload, sig, userstore)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return JSONResponse(result)
+
+
+@app.get("/billing/portal")
+async def billing_portal(request: Request):
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403)
+    user = userstore.get_by_id(user_id)
+    if not user or not user.stripe_customer_id:
+        raise HTTPException(status_code=400, detail="No billing account found. Complete a checkout first.")
+    base = str(request.base_url).rstrip("/")
+    try:
+        url = create_billing_portal_session(user, return_url=f"{base}/account")
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return RedirectResponse(url=url, status_code=303)
 
 
 @app.get("/auth-config")
@@ -125,10 +268,15 @@ async def proxy_openai(
     x_tenant_id: Optional[str] = Header(None),
 ):
     # ── Auth ──
-    proxy_key = keystore.validate(_extract_bearer(authorization))
+    bearer = _extract_bearer(authorization)
+    proxy_key = keystore.validate(bearer)
     if proxy_key is None:
-        raise HTTPException(status_code=401, detail={"error": "invalid_api_key",
-                                                      "message": "Invalid or missing proxy key."})
+        # Fallback: check user-provisioned proxy keys
+        user = userstore.get_by_proxy_key(bearer) if bearer else None
+        if user is None:
+            raise HTTPException(status_code=401, detail={"error": "invalid_api_key",
+                                                          "message": "Invalid or missing proxy key."})
+        proxy_key = ProxyKey(key=bearer, name=f"user:{user.email}", tenant_id=user.tenant_id)
 
     tenant_id = (
         proxy_key.tenant_id
@@ -230,10 +378,14 @@ async def proxy_anthropic(
     # ── Auth ──
     proxy_key = keystore.validate(x_api_key)
     if proxy_key is None:
-        raise HTTPException(status_code=401, detail={
-            "type": "error",
-            "error": {"type": "authentication_error", "message": "Invalid or missing proxy key."},
-        })
+        # Fallback: check user-provisioned proxy keys
+        user = userstore.get_by_proxy_key(x_api_key) if x_api_key else None
+        if user is None:
+            raise HTTPException(status_code=401, detail={
+                "type": "error",
+                "error": {"type": "authentication_error", "message": "Invalid or missing proxy key."},
+            })
+        proxy_key = ProxyKey(key=x_api_key, name=f"user:{user.email}", tenant_id=user.tenant_id)
 
     tenant_id = (
         proxy_key.tenant_id
@@ -345,31 +497,37 @@ async def proxy_anthropic(
 
 @app.get("/audit")
 async def get_audit_log(
+    request: Request,
     limit: int = 50,
     tenant_id: Optional[str] = None,
     api: Optional[str] = None,
 ):
     """View recent audit log entries. Filter by tenant_id or api (openai|anthropic)."""
-    return audit.get_recent(limit=limit, tenant_id=tenant_id, api=api)
+    scoped = getattr(request.state, "tenant_id", None)
+    return audit.get_recent(limit=limit, tenant_id=scoped or tenant_id, api=api)
 
 
 @app.get("/rate-limits")
-async def get_rate_limits(tenant_id: str = "default"):
+async def get_rate_limits(request: Request, tenant_id: str = "default"):
     """Current rate limit usage for a tenant."""
-    policy = PolicyEngine.load_for_tenant(tenant_id)
-    return limiter.status(tenant_id, policy.rate_limit)
+    scoped = getattr(request.state, "tenant_id", None)
+    tid = scoped or tenant_id
+    policy = PolicyEngine.load_for_tenant(tid)
+    return limiter.status(tid, policy.rate_limit)
 
 
 @app.get("/stats")
-async def get_stats(tenant_id: Optional[str] = None):
+async def get_stats(request: Request, tenant_id: Optional[str] = None):
     """Aggregated stats for the dashboard."""
-    return audit.get_stats(tenant_id=tenant_id)
+    scoped = getattr(request.state, "tenant_id", None)
+    return audit.get_stats(tenant_id=scoped or tenant_id)
 
 
 @app.get("/metrics")
-async def get_metrics(tenant_id: Optional[str] = None, days: int = 7):
+async def get_metrics(request: Request, tenant_id: Optional[str] = None, days: int = 7):
     """Token usage and request counts per tenant over the last N days."""
-    return audit.get_token_metrics(tenant_id=tenant_id, days=days)
+    scoped = getattr(request.state, "tenant_id", None)
+    return audit.get_token_metrics(tenant_id=scoped or tenant_id, days=days)
 
 
 @app.get("/auth-status")
@@ -396,13 +554,15 @@ _POLICY_FILE = os.path.join(os.path.dirname(__file__), "policy.yaml")
 
 
 def _load_raw_policy() -> dict:
-    with open(_POLICY_FILE) as f:
-        return yaml.safe_load(f) or {}
+    with _POLICY_LOCK:
+        with open(_POLICY_FILE) as f:
+            return yaml.safe_load(f) or {}
 
 
 def _save_raw_policy(raw: dict) -> None:
-    with open(_POLICY_FILE, "w") as f:
-        yaml.safe_dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    with _POLICY_LOCK:
+        with open(_POLICY_FILE, "w") as f:
+            yaml.safe_dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
 @app.get("/policy")

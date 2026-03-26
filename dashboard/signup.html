@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Guardrail Proxy — Sign Up</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3a;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --accent:  #6366f1;
+      --green:   #22c55e;
+      --red:     #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 40px 36px;
+      width: 380px;
+    }
+
+    .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 4px; }
+    .logo span { color: var(--accent); }
+
+    .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus { border-color: var(--accent); }
+    input.error-field { border-color: var(--red); }
+
+    button {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 11px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 4px;
+    }
+
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .alert {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .alert.error   { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+    .alert.show    { display: block; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    .footer { text-align: center; font-size: 13px; color: var(--muted); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    .plan-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .plan-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: 12px;
+    }
+
+    .plan-card:hover { border-color: var(--accent); }
+    .plan-card.selected { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+
+    .plan-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+    .plan-price { color: var(--muted); font-size: 11px; }
+    .plan-limit { color: var(--muted); font-size: 10px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo"><span>Guardrail</span> Proxy</div>
+    <div class="subtitle">Create your account — free to start</div>
+
+    <div class="alert error" id="err"></div>
+
+    <form id="form" novalidate>
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" placeholder="you@company.com" autocomplete="email" />
+
+      <label for="password">Password <span style="font-weight:400;text-transform:none;letter-spacing:0">(8+ characters)</span></label>
+      <input type="password" id="password" name="password" placeholder="Choose a strong password" autocomplete="new-password" />
+
+      <button type="submit" id="submit-btn">Create account</button>
+    </form>
+
+    <hr class="divider" />
+    <div class="footer">Already have an account? <a href="/login">Sign in</a></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const errEl  = document.getElementById('err');
+
+    const ERRORS = {
+      invalid:    'Please enter a valid email and a password with at least 8 characters.',
+      email_taken: 'That email is already registered. <a href="/login">Sign in instead?</a>',
+    };
+
+    function showError(msg) {
+      errEl.innerHTML = msg;
+      errEl.classList.add('show');
+    }
+
+    if (params.get('error')) {
+      showError(ERRORS[params.get('error')] || 'Something went wrong. Please try again.');
+    }
+
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.remove('show');
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !email.includes('@')) {
+        showError('Please enter a valid email address.');
+        document.getElementById('email').focus();
+        return;
+      }
+      if (password.length < 8) {
+        showError('Password must be at least 8 characters.');
+        document.getElementById('password').focus();
+        return;
+      }
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+
+      const fd = new FormData();
+      fd.append('email', email);
+      fd.append('password', password);
+
+      const r = await fetch('/signup', { method: 'POST', body: fd, redirect: 'manual' });
+
+      if (r.type === 'opaqueredirect' || r.status === 302) {
+        window.location.href = '/account';
+        return;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Create account';
+
+      if (r.status === 409 || r.url?.includes('email_taken')) {
+        showError(ERRORS.email_taken);
+      } else {
+        showError('Something went wrong. Please try again.');
+      }
+    });
+  </script>
+</body>
+</html>
