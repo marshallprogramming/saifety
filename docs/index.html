@@ -218,6 +218,14 @@
         color: var(--text);
       }
 
+      .nav-links .btn-primary {
+        color: #fff;
+      }
+
+      .nav-links .btn-primary:hover {
+        color: #fff;
+      }
+
       .btn {
         display: inline-flex;
         align-items: center;
@@ -536,6 +544,7 @@
         border-radius: 16px;
         padding: 32px;
         position: relative;
+        min-width: 0; /* prevent grid blowout */
       }
 
       .step-num {
@@ -1107,18 +1116,14 @@
               Point your OpenAI or Anthropic client at the proxy instead of the
               AI API directly. That's the only code change needed.
             </p>
-            <div class="code-block">
-              <span class="dim"># before</span> OpenAI(api_key=<span class="val"
-                >"sk-..."</span
-              >)
+            <div class="code-block"><span class="dim"># before</span>
+OpenAI(api_key=<span class="val">"sk-..."</span>)
 
-              <span class="add"># after</span>
-              OpenAI( api_key=<span class="val">"sk-..."</span>, base_url=<span
-                class="val"
-                >"http://localhost:8000/v1"</span
-              >
-              )
-            </div>
+<span class="add"># after — one line change</span>
+OpenAI(
+  api_key=<span class="val">"sk-..."</span>,
+  base_url=<span class="val">"http://localhost:8000/v1"</span>
+)</div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
@@ -1127,17 +1132,15 @@
               Edit <code>policy.yaml</code> to define which guardrails apply to
               which tenants. No code deploys — just save the file.
             </p>
-            <div class="code-block">
-              <span class="key">pii</span>: <span class="key">enabled</span>:
-              <span class="val">true</span> <span class="key">action</span>:
-              <span class="val">redact</span>
-              <span class="key">prompt_injection</span>:
-              <span class="key">enabled</span>: <span class="val">true</span>
-              <span class="key">topic_filter</span>:
-              <span class="key">blocked_topics</span>: -
-              <span class="val">competitor</span> -
-              <span class="val">lawsuit</span>
-            </div>
+            <div class="code-block"><span class="key">pii</span>:
+  <span class="key">enabled</span>: <span class="val">true</span>
+  <span class="key">action</span>: <span class="val">redact</span>
+<span class="key">prompt_injection</span>:
+  <span class="key">enabled</span>: <span class="val">true</span>
+<span class="key">topic_filter</span>:
+  <span class="key">blocked_topics</span>:
+    - <span class="val">competitor</span>
+    - <span class="val">lawsuit</span></div>
           </div>
         </div>
       </div>
