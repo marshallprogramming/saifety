@@ -292,6 +292,74 @@
       background: rgba(34,197,94,0.1);
       border-radius: 6px;
     }
+
+    /* Onboarding banner */
+    .onboarding {
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: none;
+    }
+
+    .onboarding.show { display: block; }
+
+    .onboarding h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .onboarding p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .onboarding-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .onboarding-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-num.done {
+      background: var(--green);
+    }
+
+    .step-text strong { display: block; margin-bottom: 1px; }
+    .step-text span { color: var(--muted); }
+
+    .onboarding-dismiss {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -306,6 +374,36 @@
 </header>
 
 <main id="main" style="display:none">
+
+  <!-- Onboarding banner (shown on first signup) -->
+  <div class="onboarding" id="onboarding">
+    <h3>Welcome to sAIfety — you're almost set up</h3>
+    <p>Three quick steps to start protecting your AI calls.</p>
+    <div class="onboarding-steps">
+      <div class="onboarding-step">
+        <div class="step-num done">1</div>
+        <div class="step-text">
+          <strong>Account created</strong>
+          <span>Your proxy key is ready below.</span>
+        </div>
+      </div>
+      <div class="onboarding-step">
+        <div class="step-num" id="step2-num">2</div>
+        <div class="step-text">
+          <strong>Save your AI API key</strong>
+          <span>Paste your OpenAI or Anthropic key so sAIfety can forward requests on your behalf.</span>
+        </div>
+      </div>
+      <div class="onboarding-step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>Point your code at the proxy</strong>
+          <span>Change one line — use the Quick Start snippets at the bottom of this page.</span>
+        </div>
+      </div>
+    </div>
+    <button class="onboarding-dismiss" onclick="dismissOnboarding()">Dismiss</button>
+  </div>
 
   <!-- Proxy key -->
   <div class="card">
@@ -361,6 +459,16 @@
         <div class="stat-item">
           <div class="stat-value" id="stat-blocked" style="color:var(--red)">—</div>
           <div class="stat-label">Blocked</div>
+        </div>
+      </div>
+
+      <div id="monthly-usage" style="margin-top:16px;display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--muted)">Monthly requests</span>
+          <span style="font-size:12px;color:var(--muted)" id="monthly-label">—</span>
+        </div>
+        <div class="usage-bar-wrap">
+          <div class="usage-bar-fill" id="monthly-bar" style="width:0%"></div>
         </div>
       </div>
 
@@ -570,6 +678,49 @@ console.log(response.choices[0].message.content);`;
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
   }
+
+  // ── Onboarding banner ────────────────────────────────────────────────────────
+
+  function showOnboarding(hasAiKey) {
+    // Only show if the user arrived via signup (?new=1) and hasn't dismissed
+    if (sessionStorage.getItem('onboarding_dismissed')) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') !== '1') return;
+    if (hasAiKey) {
+      document.getElementById('step2-num').classList.add('done');
+    }
+    document.getElementById('onboarding').classList.add('show');
+  }
+
+  function dismissOnboarding() {
+    sessionStorage.setItem('onboarding_dismissed', '1');
+    document.getElementById('onboarding').classList.remove('show');
+  }
+
+  // ── Monthly usage bar ─────────────────────────────────────────────────────
+
+  function renderMonthlyUsage(d) {
+    const cap = d.plan_info?.monthly_requests;
+    const used = d.monthly_used ?? 0;
+    if (!cap) return;
+    const pct = Math.min(100, (used / cap) * 100);
+    const el = document.getElementById('monthly-usage');
+    const bar = document.getElementById('monthly-bar');
+    const label = document.getElementById('monthly-label');
+    el.style.display = 'block';
+    bar.style.width = pct + '%';
+    bar.className = 'usage-bar-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+    label.textContent = `${used.toLocaleString()} / ${cap.toLocaleString()}`;
+  }
+
+  // ── Patch render to call new helpers ─────────────────────────────────────
+
+  const _origRender = render;
+  render = function(d) {
+    _origRender(d);
+    showOnboarding(d.has_ai_key);
+    renderMonthlyUsage(d);
+  };
 
   // Show success message if redirected back from Stripe checkout
   const params = new URLSearchParams(window.location.search);

@@ -46,6 +46,19 @@ if _ENCRYPTION_KEY:
             "Generate a valid key with:\n"
             "  python3 -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
         )
+else:
+    import sys
+    print(
+        "\n"
+        "  ╔══════════════════════════════════════════════════════════════╗\n"
+        "  ║  WARNING: ENCRYPTION_KEY is not set.                        ║\n"
+        "  ║  AI API keys will be stored in plaintext (dev mode only).   ║\n"
+        "  ║  Set this env var before accepting real user data:           ║\n"
+        "  ║    python3 -c \"from cryptography.fernet import Fernet;      ║\n"
+        "  ║               print(Fernet.generate_key().decode())\"        ║\n"
+        "  ╚══════════════════════════════════════════════════════════════╝\n",
+        file=sys.stderr,
+    )
 
 # ── Plans ─────────────────────────────────────────────────────────────────────
 
@@ -238,6 +251,11 @@ class UserStore:
     def get_by_id(self, user_id: str) -> Optional[User]:
         with self._conn() as conn:
             row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return _row_to_user(row) if row else None
+
+    def get_by_tenant_id(self, tenant_id: str) -> Optional[User]:
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM users WHERE tenant_id = ?", (tenant_id,)).fetchone()
         return _row_to_user(row) if row else None
 
     def get_by_proxy_key(self, proxy_key: str) -> Optional[User]:

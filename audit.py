@@ -129,6 +129,19 @@ class SQLiteBackend:
             "top_block_reasons": [{"reason": r[0], "count": r[1]} for r in reasons],
         }
 
+    def get_monthly_request_count(self, tenant_id: str) -> int:
+        """Count passed requests for a tenant since the start of the current calendar month."""
+        import calendar
+        now = time.gmtime()
+        month_start = time.mktime((now.tm_year, now.tm_mon, 1, 0, 0, 0, 0, 0, -1))
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM audit_log "
+                "WHERE tenant_id = ? AND outcome = 'passed' AND ts >= ?",
+                (tenant_id, month_start),
+            ).fetchone()
+        return row[0] if row else 0
+
     def get_token_metrics(self, tenant_id, days):
         since = time.time() - days * 86400
         conditions = ["ts >= ?"]
@@ -311,6 +324,23 @@ class PostgresBackend:
             "top_block_reasons": [{"reason": r[0], "count": r[1]} for r in reasons],
         }
 
+    def get_monthly_request_count(self, tenant_id: str) -> int:
+        import time as _time
+        now = _time.gmtime()
+        month_start = _time.mktime((now.tm_year, now.tm_mon, 1, 0, 0, 0, 0, 0, -1))
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*) FROM audit_log "
+                    "WHERE tenant_id = %s AND outcome = 'passed' AND ts >= %s",
+                    (tenant_id, month_start),
+                )
+                row = cur.fetchone()
+        finally:
+            self._release(conn)
+        return row[0] if row else 0
+
     def get_token_metrics(self, tenant_id, days):
         since = time.time() - days * 86400
         conditions = ["ts >= %s"]
@@ -387,3 +417,6 @@ class AuditLogger:
 
     def get_token_metrics(self, tenant_id: Optional[str] = None, days: int = 7) -> dict:
         return self._backend.get_token_metrics(tenant_id, days)
+
+    def get_monthly_request_count(self, tenant_id: str) -> int:
+        return self._backend.get_monthly_request_count(tenant_id)

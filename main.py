@@ -148,7 +148,7 @@ async def signup(request: Request):
         return RedirectResponse(url="/signup?error=email_taken", status_code=302)
 
     token = dash_auth.create_session(user.id)
-    response = RedirectResponse(url="/account", status_code=302)
+    response = RedirectResponse(url="/account?new=1", status_code=302)
     response.set_cookie("dash_session", token, httponly=True, samesite="lax", max_age=86400 * 30)
     return response
 
@@ -227,14 +227,16 @@ async def account_data(request: Request):
     if not user:
         raise HTTPException(status_code=404)
     stats = audit.get_stats(tenant_id=user.tenant_id)
+    monthly_used = audit.get_monthly_request_count(user.tenant_id)
     return {
-        "email":       user.email,
-        "proxy_key":   user.proxy_key,
-        "tenant_id":   user.tenant_id,
-        "plan":        user.plan,
-        "plan_info":   PLANS.get(user.plan, PLANS["free"]),
-        "has_ai_key":  user.has_ai_key,
-        "stats":       stats,
+        "email":              user.email,
+        "proxy_key":          user.proxy_key,
+        "tenant_id":          user.tenant_id,
+        "plan":               user.plan,
+        "plan_info":          PLANS.get(user.plan, PLANS["free"]),
+        "has_ai_key":         user.has_ai_key,
+        "stats":              stats,
+        "monthly_used":       monthly_used,
     }
 
 
@@ -310,6 +312,28 @@ ANTHROPIC_API_BASE = "https://api.anthropic.com"
 ANTHROPIC_DEFAULT_VERSION = "2023-06-01"
 
 
+def _check_monthly_limit(tenant_id: str) -> Optional[str]:
+    """
+    Returns an error message if the tenant has hit their monthly request cap,
+    or None if they are within limits (or are a self-hosted / admin tenant).
+    Only applies to user-provisioned tenants that have an associated account.
+    """
+    user = userstore.get_by_tenant_id(tenant_id)
+    if user is None:
+        return None  # not a SaaS user — no cap
+    plan = PLANS.get(user.plan, PLANS["free"])
+    cap = plan.get("monthly_requests")
+    if not cap:
+        return None
+    used = audit.get_monthly_request_count(tenant_id)
+    if used >= cap:
+        return (
+            f"Monthly request limit reached ({cap:,} requests). "
+            f"Upgrade your plan at saifety.dev/account."
+        )
+    return None
+
+
 # ── OpenAI route ──────────────────────────────────────────────────────────────
 
 @app.post("/v1/chat/completions")
@@ -348,6 +372,11 @@ async def proxy_openai(
             detail={"error": "rate_limited", "reason": rl.reason},
             headers={"Retry-After": str(rl.retry_after)},
         )
+
+    monthly_err = _check_monthly_limit(tenant_id)
+    if monthly_err:
+        audit.log(tenant_id, "rate_limited", monthly_err, body, "openai")
+        raise HTTPException(status_code=429, detail={"error": "monthly_limit_reached", "reason": monthly_err})
 
     input_result = pipeline.run_input(body.get("messages", []))
     if input_result.blocked:
@@ -460,6 +489,14 @@ async def proxy_anthropic(
             },
             headers={"Retry-After": str(rl.retry_after)},
         )
+
+    monthly_err = _check_monthly_limit(tenant_id)
+    if monthly_err:
+        audit.log(tenant_id, "rate_limited", monthly_err, body, "anthropic")
+        raise HTTPException(status_code=429, detail={
+            "type": "error",
+            "error": {"type": "rate_limit_error", "message": monthly_err},
+        })
 
     # Anthropic puts the system prompt as a top-level field, not in messages
     system_prompt = body.get("system")

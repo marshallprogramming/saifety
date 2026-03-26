@@ -13,7 +13,9 @@ Stripe setup:
        "Saifety Growth"  → $199/month
   2. Copy each price ID (price_xxx) into the env vars above.
   3. Create a webhook endpoint pointing to: https://your-domain.com/billing/webhook
-     Subscribe to: checkout.session.completed, customer.subscription.deleted
+     Subscribe to: checkout.session.completed, customer.subscription.deleted,
+                   customer.subscription.updated, customer.subscription.paused,
+                   invoice.payment_failed
 
 Test locally with the Stripe CLI:
   stripe listen --forward-to localhost:8000/billing/webhook
@@ -125,10 +127,37 @@ def handle_webhook(payload_bytes: bytes, sig_header: str, userstore: "UserStore"
             userstore.set_stripe_ids(user_id, data.get("customer"), data.get("subscription"))
 
     elif event_type in ("customer.subscription.deleted", "customer.subscription.paused"):
+        # Subscription cancelled or manually paused — downgrade immediately
         customer_id = data.get("customer")
         if customer_id:
             user = userstore.get_by_stripe_customer(customer_id)
             if user:
                 userstore.set_plan(user.id, "free")
+
+    elif event_type == "customer.subscription.updated":
+        # Stripe retries failed invoices and eventually marks the subscription
+        # past_due (smart retries exhausted) or unpaid (final dunning step).
+        # Downgrade at this point rather than on the first failed invoice.
+        status = data.get("status")
+        if status in ("past_due", "unpaid"):
+            customer_id = data.get("customer")
+            if customer_id:
+                user = userstore.get_by_stripe_customer(customer_id)
+                if user:
+                    userstore.set_plan(user.id, "free")
+
+    elif event_type == "invoice.payment_failed":
+        # First failure — Stripe will retry automatically. Log but don't act yet;
+        # customer.subscription.updated will fire if retries are exhausted.
+        # We still handle the edge case where no subscription exists on the event.
+        invoice_status = data.get("status")
+        attempt = data.get("attempt_count", 1)
+        if invoice_status == "open" and attempt and attempt >= 3:
+            # Multiple failures and Stripe isn't auto-retrying further
+            customer_id = data.get("customer")
+            if customer_id:
+                user = userstore.get_by_stripe_customer(customer_id)
+                if user:
+                    userstore.set_plan(user.id, "free")
 
     return {"received": True, "type": event_type}
