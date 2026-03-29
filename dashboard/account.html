@@ -850,7 +850,7 @@
               "
             >
               <span style="font-size: 12px; color: var(--muted)"
-                >Monthly requests</span
+                >Monthly requests (<span id="plan-badge" style="text-transform: capitalize"></span> plan)</span
               >
               <span
                 style="font-size: 12px; color: var(--muted)"
@@ -1203,11 +1203,17 @@ console.log(response.choices[0].message.content);`;
         const el = document.getElementById("monthly-usage");
         const bar = document.getElementById("monthly-bar");
         const label = document.getElementById("monthly-label");
+        const badge = document.getElementById("plan-badge");
         el.style.display = "block";
         bar.style.width = pct + "%";
         bar.className =
           "usage-bar-fill" + (pct >= 100 ? " full" : pct >= 80 ? " warn" : "");
-        label.textContent = `${used.toLocaleString()} / ${cap.toLocaleString()}`;
+        badge.textContent = d.plan || "free";
+        if (pct >= 80 && d.plan === "free") {
+          label.innerHTML = `${used.toLocaleString()} / ${cap.toLocaleString()} &mdash; <a href="javascript:document.getElementById('upgrade-section').scrollIntoView({behavior:'smooth'})" style="color: var(--accent)">Upgrade</a>`;
+        } else {
+          label.textContent = `${used.toLocaleString()} / ${cap.toLocaleString()}`;
+        }
       }
 
       // ── Patch render to call new helpers ─────────────────────────────────────

@@ -555,13 +555,14 @@ ANTHROPIC_API_BASE = "https://api.anthropic.com"
 ANTHROPIC_DEFAULT_VERSION = "2023-06-01"
 
 
-def _check_monthly_limit(tenant_id: str) -> Optional[str]:
+def _check_monthly_limit(tenant_id: str, user=None) -> Optional[str]:
     """
     Returns an error message if the tenant has hit their monthly request cap,
     or None if they are within limits (or are a self-hosted / admin tenant).
     Only applies to user-provisioned tenants that have an associated account.
     """
-    user = userstore.get_by_tenant_id(tenant_id)
+    if user is None:
+        user = userstore.get_by_tenant_id(tenant_id)
     if user is None:
         return None  # not a SaaS user — no cap
     plan = PLANS.get(user.plan, PLANS["free"])
@@ -575,6 +576,14 @@ def _check_monthly_limit(tenant_id: str) -> Optional[str]:
             f"Upgrade your plan at saifety.dev/account."
         )
     return None
+
+
+def _response_headers(user) -> dict:
+    """Build extra response headers. Free-tier users get a Powered-By header."""
+    headers = {}
+    if user is None or user.plan == "free":
+        headers["X-Powered-By"] = "sAIfety (saifety.dev)"
+    return headers
 
 
 # ── OpenAI route ──────────────────────────────────────────────────────────────
@@ -617,10 +626,12 @@ async def proxy_openai(
             headers={"Retry-After": str(rl.retry_after)},
         )
 
-    monthly_err = _check_monthly_limit(tenant_id)
+    monthly_err = _check_monthly_limit(tenant_id, user)
     if monthly_err:
         audit.log(tenant_id, "rate_limited", monthly_err, body, "openai")
         raise HTTPException(status_code=429, detail={"error": "monthly_limit_reached", "reason": monthly_err})
+
+    extra_headers = _response_headers(user)
 
     input_result = pipeline.run_input(body.get("messages", []))
     if input_result.blocked:
@@ -647,7 +658,7 @@ async def proxy_openai(
 
     # Streaming path
     if body.get("stream"):
-        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity)
+        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity, response_headers=extra_headers)
 
     # Non-streaming path
     try:
@@ -687,7 +698,7 @@ async def proxy_openai(
         "completion_tokens": usage.get("completion_tokens"),
     } if usage else None
     audit.log(tenant_id, "passed", None, body, "openai", openai_usage)
-    return JSONResponse(response_data)
+    return JSONResponse(response_data, headers=extra_headers)
 
 
 # ── Anthropic route ───────────────────────────────────────────────────────────
@@ -734,13 +745,15 @@ async def proxy_anthropic(
             headers={"Retry-After": str(rl.retry_after)},
         )
 
-    monthly_err = _check_monthly_limit(tenant_id)
+    monthly_err = _check_monthly_limit(tenant_id, user)
     if monthly_err:
         audit.log(tenant_id, "rate_limited", monthly_err, body, "anthropic")
         raise HTTPException(status_code=429, detail={
             "type": "error",
             "error": {"type": "rate_limit_error", "message": monthly_err},
         })
+
+    extra_headers = _response_headers(user)
 
     # Anthropic puts the system prompt as a top-level field, not in messages
     system_prompt = body.get("system")
@@ -772,7 +785,7 @@ async def proxy_anthropic(
 
     # Streaming path
     if body.get("stream"):
-        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity)
+        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity, response_headers=extra_headers)
 
     # Non-streaming path
     try:
@@ -821,7 +834,7 @@ async def proxy_anthropic(
         "completion_tokens": usage.get("output_tokens"),
     } if usage else None
     audit.log(tenant_id, "passed", None, body, "anthropic", anthropic_usage)
-    return JSONResponse(response_data)
+    return JSONResponse(response_data, headers=extra_headers)
 
 
 # ── Utility routes ────────────────────────────────────────────────────────────

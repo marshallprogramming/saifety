@@ -64,7 +64,7 @@ else:
 # ── Plans ─────────────────────────────────────────────────────────────────────
 
 PLANS = {
-    "free":    {"price_monthly": 0,   "monthly_requests": 10_000,    "rpm": 10,  "rph": 200},
+    "free":    {"price_monthly": 0,   "monthly_requests": 200,       "rpm": 10,  "rph": 200},
     "starter": {"price_monthly": 49,  "monthly_requests": 100_000,   "rpm": 60,  "rph": 1_000},
     "growth":  {"price_monthly": 199, "monthly_requests": 1_000_000, "rpm": 200, "rph": 10_000},
 }

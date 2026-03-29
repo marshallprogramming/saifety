@@ -38,6 +38,7 @@ def stream_openai(
     webhook_config: WebhookConfig,
     toxicity_checker: ToxicityChecker = None,
     toxicity_config: ToxicityConfig = None,
+    response_headers: Optional[dict] = None,
 ) -> StreamingResponse:
 
     async def generate():
@@ -115,7 +116,7 @@ def stream_openai(
             yield f"data: {json.dumps(err)}\n\n"
             yield "data: [DONE]\n\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="text/event-stream", headers=response_headers or {})
 
 
 # ── Anthropic ─────────────────────────────────────────────────────────────────
@@ -131,6 +132,7 @@ def stream_anthropic(
     webhook_config: WebhookConfig,
     toxicity_checker: ToxicityChecker = None,
     toxicity_config: ToxicityConfig = None,
+    response_headers: Optional[dict] = None,
 ) -> StreamingResponse:
     """
     Anthropic streams Server-Sent Events with explicit event: lines.
@@ -209,7 +211,7 @@ def stream_anthropic(
         except httpx.RequestError as e:
             yield _anthropic_error_event(f"Upstream error: {e}")
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="text/event-stream", headers=response_headers or {})
 
 
 def _anthropic_error_event(message: str) -> str:
