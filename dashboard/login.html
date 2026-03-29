@@ -68,7 +68,8 @@
         margin-bottom: 6px;
       }
 
-      input[type="password"] {
+      input[type="password"],
+      input[type="email"] {
         width: 100%;
         background: var(--bg);
         border: 1px solid var(--border);
@@ -81,7 +82,8 @@
         transition: border-color 0.15s;
       }
 
-      input[type="password"]:focus {
+      input[type="password"]:focus,
+      input[type="email"]:focus {
         border-color: var(--accent);
       }
 
@@ -146,17 +148,12 @@
       </div>
 
       <form method="POST" action="/login" id="form">
-        <label for="email"
-          >Email
-          <span style="font-weight: 400; text-transform: none; font-size: 11px"
-            >(leave blank for admin login)</span
-          ></label
-        >
+        <label for="email">Email</label>
         <input
           type="email"
           id="email"
           name="email"
-          placeholder="you@company.com"
+          placeholder="Email"
           autocomplete="email"
         />
 
@@ -213,10 +210,10 @@
         const r = await fetch("/login", {
           method: "POST",
           body: fd,
-          redirect: "manual",
+          redirect: "follow",
+          credentials: "same-origin",
         });
-        if (r.type === "opaqueredirect" || r.status === 302 || r.ok) {
-          // User login → account page; admin login → dashboard
+        if (r.ok || r.redirected) {
           window.location.href = email.trim() ? "/account" : "/";
         } else {
           document.getElementById("err").classList.add("show");

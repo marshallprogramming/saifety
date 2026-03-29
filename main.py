@@ -256,6 +256,7 @@ async def account_data(request: Request):
         "plan":               user.plan,
         "plan_info":          PLANS.get(user.plan, PLANS["free"]),
         "has_ai_key":         user.has_ai_key,
+        "has_anthropic_key":  user.has_anthropic_key,
         "stats":              stats,
         "monthly_used":       monthly_used,
     }
@@ -266,12 +267,92 @@ async def save_ai_key(request: Request):
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
         raise HTTPException(status_code=403)
-    form = await request.form()
-    ai_key = form.get("ai_key", "").strip()
-    if not ai_key:
-        raise HTTPException(status_code=400, detail="AI key required")
-    userstore.set_ai_key(user_id, ai_key)
-    return RedirectResponse(url="/account?saved=1", status_code=302)
+    body = await request.json()
+    openai_key = body.get("openai_key", "").strip()
+    anthropic_key = body.get("anthropic_key", "").strip()
+    if not openai_key and not anthropic_key:
+        raise HTTPException(status_code=400, detail="At least one API key is required")
+    if openai_key:
+        userstore.set_ai_key(user_id, openai_key)
+    if anthropic_key:
+        userstore.set_anthropic_key(user_id, anthropic_key)
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/playground/test")
+async def playground_test(request: Request):
+    """Run guardrails on a test message without forwarding upstream."""
+    user_id = getattr(request.state, "user_id", None)
+    is_admin = getattr(request.state, "is_admin", False)
+    if not user_id and not is_admin:
+        raise HTTPException(status_code=403)
+
+    body = await request.json()
+    text = body.get("message", "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="message is required")
+
+    tenant_id = None
+    if user_id:
+        user = userstore.get_by_id(user_id)
+        if user:
+            tenant_id = user.tenant_id
+    if not tenant_id:
+        tenant_id = "default"
+
+    policy = PolicyEngine.load_for_tenant(tenant_id)
+    messages = [{"role": "user", "content": text}]
+
+    checks = []
+    sanitized = text
+    overall = "passed"
+
+    if policy.input.injection.enabled:
+        from guardrails.injection import InjectionGuardrail
+        result = InjectionGuardrail(policy.input.injection).check(messages)
+        if result.blocked:
+            checks.append({"guardrail": "Prompt Injection", "status": "blocked",
+                           "detail": result.reason})
+            overall = "blocked"
+        else:
+            checks.append({"guardrail": "Prompt Injection", "status": "passed", "detail": None})
+
+    if policy.input.topic_filter.enabled:
+        from guardrails.topic_filter import TopicFilterGuardrail
+        result = TopicFilterGuardrail(policy.input.topic_filter).check(messages)
+        if result.blocked:
+            checks.append({"guardrail": "Topic Filter", "status": "blocked",
+                           "detail": result.reason})
+            if overall != "blocked":
+                overall = "blocked"
+        else:
+            checks.append({"guardrail": "Topic Filter", "status": "passed", "detail": None})
+
+    if policy.input.pii.enabled:
+        from guardrails.pii import PIIGuardrail
+        pii = PIIGuardrail(policy.input.pii)
+        result = pii.check([{"role": "user", "content": text}])
+        if result.blocked:
+            checks.append({"guardrail": "PII Detection", "status": "blocked",
+                           "detail": result.reason})
+            if overall != "blocked":
+                overall = "blocked"
+        elif result.messages and result.messages[0].get("content") != text:
+            sanitized_text = result.messages[0].get("content", text)
+            checks.append({"guardrail": "PII Detection", "status": "redacted",
+                           "detail": "PII found and redacted"})
+            sanitized = sanitized_text
+            if overall == "passed":
+                overall = "redacted"
+        else:
+            checks.append({"guardrail": "PII Detection", "status": "passed", "detail": None})
+
+    return {
+        "original": text,
+        "sanitized": sanitized,
+        "overall": overall,
+        "checks": checks,
+    }
 
 
 @app.post("/billing/checkout")
@@ -538,8 +619,7 @@ async def proxy_anthropic(
     if input_result.system is not None:
         body["system"] = input_result.system
 
-    # Use the policy's stored upstream key if configured, else forward the client's key
-    upstream_api_key = policy.upstream_api_key or x_api_key
+    upstream_api_key = policy.upstream_anthropic_key or policy.upstream_api_key or x_api_key
     forward_headers = {
         "Content-Type": "application/json",
         "anthropic-version": anthropic_version or ANTHROPIC_DEFAULT_VERSION,

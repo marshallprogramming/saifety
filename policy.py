@@ -82,7 +82,8 @@ class WebhookConfig:
 class Policy:
     tenant_id: str
     upstream_url: str
-    upstream_api_key: Optional[str] = None   # if set, used instead of the client's key
+    upstream_api_key: Optional[str] = None   # OpenAI key — used instead of the client's key
+    upstream_anthropic_key: Optional[str] = None  # Anthropic key
     input: InputPolicy = field(default_factory=InputPolicy)
     output: OutputPolicy = field(default_factory=OutputPolicy)
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
@@ -127,6 +128,7 @@ class PolicyEngine:
             tenant_id=tenant_id,
             upstream_url=cfg.get("upstream_url", "https://api.openai.com/v1/chat/completions"),
             upstream_api_key=_resolve_env(cfg.get("upstream_api_key")),
+            upstream_anthropic_key=_resolve_env(cfg.get("upstream_anthropic_key")),
             input=InputPolicy(
                 pii=PIIConfig(
                     enabled=pii_raw.get("enabled", True),

@@ -280,22 +280,26 @@
         const r = await fetch("/signup", {
           method: "POST",
           body: fd,
-          redirect: "manual",
+          redirect: "follow",
+          credentials: "same-origin",
         });
 
-        if (r.type === "opaqueredirect" || r.status === 302) {
-          window.location.href = "/account";
-          return;
+        if (r.ok || r.redirected) {
+          const url = new URL(r.url);
+          if (url.searchParams.get("error") === "email_taken") {
+            showError(ERRORS.email_taken);
+          } else if (url.searchParams.get("error")) {
+            showError("Something went wrong. Please try again.");
+          } else {
+            window.location.href = "/account";
+            return;
+          }
+        } else {
+          showError("Something went wrong. Please try again.");
         }
 
         btn.disabled = false;
         btn.textContent = "Create account";
-
-        if (r.status === 409 || r.url?.includes("email_taken")) {
-          showError(ERRORS.email_taken);
-        } else {
-          showError("Something went wrong. Please try again.");
-        }
       });
     </script>
   </body>

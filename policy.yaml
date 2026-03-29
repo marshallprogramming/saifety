@@ -180,3 +180,32 @@ tenants:
       enabled: true
       requests_per_minute: 10
       requests_per_hour: 200
+  user_d258e7ed428c:
+    upstream_url: https://api.openai.com/v1/chat/completions
+    input:
+      pii:
+        enabled: true
+        action: redact
+        types:
+        - email
+        - phone
+        - ssn
+        - credit_card
+      prompt_injection:
+        enabled: true
+        action: block
+      topic_filter:
+        enabled: false
+        action: block
+        blocked_topics: []
+    output:
+      max_length: null
+      toxicity:
+        enabled: true
+        provider: wordlist
+    rate_limit:
+      enabled: true
+      requests_per_minute: 10
+      requests_per_hour: 200
+    upstream_api_key: sk-test-openai-123
+    upstream_anthropic_key: sk-ant-test-456

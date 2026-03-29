@@ -81,11 +81,16 @@ class User:
     stripe_customer_id: Optional[str]
     stripe_subscription_id: Optional[str]
     ai_api_key_encrypted: Optional[str]
+    anthropic_key_encrypted: Optional[str]
     created_at: float
 
     @property
     def has_ai_key(self) -> bool:
         return bool(self.ai_api_key_encrypted)
+
+    @property
+    def has_anthropic_key(self) -> bool:
+        return bool(self.anthropic_key_encrypted)
 
 
 def _row_to_user(row) -> User:
@@ -98,6 +103,7 @@ def _row_to_user(row) -> User:
         stripe_customer_id=row["stripe_customer_id"],
         stripe_subscription_id=row["stripe_subscription_id"],
         ai_api_key_encrypted=row["ai_api_key_encrypted"],
+        anthropic_key_encrypted=row["anthropic_key_encrypted"] if "anthropic_key_encrypted" in row.keys() else None,
         created_at=row["created_at"],
     )
 
@@ -154,13 +160,17 @@ def _write_default_policy(tenant_id: str) -> None:
                 yaml.safe_dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
-def _update_policy_upstream_key(tenant_id: str, api_key: Optional[str]) -> None:
-    """Write the user's AI API key into their tenant entry in policy.yaml."""
+def _update_policy_upstream_key(tenant_id: str, openai_key: Optional[str] = None,
+                                anthropic_key: Optional[str] = None) -> None:
+    """Write the user's AI API keys into their tenant entry in policy.yaml."""
     with _POLICY_LOCK:
         with open(_POLICY_FILE) as f:
             raw = yaml.safe_load(f) or {}
         if tenant_id in raw.get("tenants", {}):
-            raw["tenants"][tenant_id]["upstream_api_key"] = api_key
+            if openai_key is not None:
+                raw["tenants"][tenant_id]["upstream_api_key"] = openai_key
+            if anthropic_key is not None:
+                raw["tenants"][tenant_id]["upstream_anthropic_key"] = anthropic_key
             with open(_POLICY_FILE, "w") as f:
                 yaml.safe_dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
@@ -210,6 +220,10 @@ class UserStore:
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_proxy_key ON users(proxy_key)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_stripe_customer ON users(stripe_customer_id)")
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN anthropic_key_encrypted TEXT")
+            except Exception:
+                pass
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS reset_tokens (
                     token      TEXT PRIMARY KEY,
@@ -272,7 +286,7 @@ class UserStore:
         return _row_to_user(row) if row else None
 
     def set_ai_key(self, user_id: str, plaintext_key: str) -> None:
-        """Encrypt and store the user's AI API key, and update policy.yaml."""
+        """Encrypt and store the user's OpenAI API key, and update policy.yaml."""
         encrypted = _encrypt(plaintext_key)
         with self._conn() as conn:
             conn.execute(
@@ -280,7 +294,18 @@ class UserStore:
             )
         user = self.get_by_id(user_id)
         if user:
-            _update_policy_upstream_key(user.tenant_id, plaintext_key)
+            _update_policy_upstream_key(user.tenant_id, openai_key=plaintext_key)
+
+    def set_anthropic_key(self, user_id: str, plaintext_key: str) -> None:
+        """Encrypt and store the user's Anthropic API key, and update policy.yaml."""
+        encrypted = _encrypt(plaintext_key)
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE users SET anthropic_key_encrypted = ? WHERE id = ?", (encrypted, user_id)
+            )
+        user = self.get_by_id(user_id)
+        if user:
+            _update_policy_upstream_key(user.tenant_id, anthropic_key=plaintext_key)
 
     def get_ai_key(self, user_id: str) -> Optional[str]:
         with self._conn() as conn:
