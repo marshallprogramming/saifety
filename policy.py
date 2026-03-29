@@ -15,10 +15,14 @@ _DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
 
 
 def _resolve_env(value: Optional[str]) -> Optional[str]:
-    """Replace ${VAR_NAME} placeholders with environment variable values."""
+    """Replace ${VAR_NAME} placeholders with environment variable values.
+    Returns None if the value is entirely an unresolved placeholder."""
     if not value:
         return value
-    return re.sub(r"\$\{(\w+)\}", lambda m: os.environ.get(m.group(1), m.group(0)), value)
+    if re.fullmatch(r"\$\{\w+\}", value):
+        resolved = os.environ.get(value[2:-1])
+        return resolved  # None if env var not set
+    return re.sub(r"\$\{(\w+)\}", lambda m: os.environ.get(m.group(1), ""), value)
 
 
 @dataclass
@@ -102,8 +106,12 @@ class PolicyEngine:
         tenant_cfg = tenants.get(tenant_id) or tenants.get("default") or {}
         defaults = tenants.get("default") or {}
 
-        # Merge: tenant overrides default
+        # Merge: tenant overrides default, but don't inherit API keys from default
         merged = {**defaults, **tenant_cfg}
+        if tenant_id != "default" and tenants.get(tenant_id):
+            for key_field in ("upstream_api_key", "upstream_anthropic_key"):
+                if key_field not in tenant_cfg and key_field in merged:
+                    del merged[key_field]
 
         return cls._parse(tenant_id, merged)
 

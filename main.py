@@ -355,6 +355,142 @@ async def playground_test(request: Request):
     }
 
 
+@app.post("/playground/live")
+async def playground_live(request: Request):
+    """Run guardrails then forward to a real AI provider and return both results."""
+    import time as _time
+
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Login required")
+
+    user = userstore.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=403)
+
+    body = await request.json()
+    text = body.get("message", "").strip()
+    provider = body.get("provider", "openai")
+    if not text:
+        raise HTTPException(status_code=400, detail="message is required")
+
+    tenant_id = user.tenant_id
+    policy = PolicyEngine.load_for_tenant(tenant_id)
+
+    t_start = _time.time()
+
+    # -- Run guardrails first (may block without needing an API key) --
+    checks = []
+    sanitized = text
+    overall = "passed"
+
+    if policy.input.injection.enabled:
+        from guardrails.injection import InjectionGuardrail
+        result = InjectionGuardrail(policy.input.injection).check([{"role": "user", "content": text}])
+        if result.blocked:
+            checks.append({"guardrail": "Prompt Injection", "status": "blocked", "detail": result.reason})
+            overall = "blocked"
+        else:
+            checks.append({"guardrail": "Prompt Injection", "status": "passed", "detail": None})
+
+    if policy.input.topic_filter.enabled:
+        from guardrails.topic_filter import TopicFilterGuardrail
+        result = TopicFilterGuardrail(policy.input.topic_filter).check([{"role": "user", "content": text}])
+        if result.blocked:
+            checks.append({"guardrail": "Topic Filter", "status": "blocked", "detail": result.reason})
+            if overall != "blocked":
+                overall = "blocked"
+        else:
+            checks.append({"guardrail": "Topic Filter", "status": "passed", "detail": None})
+
+    if policy.input.pii.enabled:
+        from guardrails.pii import PIIGuardrail
+        pii_guard = PIIGuardrail(policy.input.pii)
+        result = pii_guard.check([{"role": "user", "content": text}])
+        if result.blocked:
+            checks.append({"guardrail": "PII Detection", "status": "blocked", "detail": result.reason})
+            if overall != "blocked":
+                overall = "blocked"
+        elif result.messages and result.messages[0].get("content") != text:
+            sanitized = result.messages[0].get("content", text)
+            checks.append({"guardrail": "PII Detection", "status": "redacted", "detail": "PII found and redacted"})
+            if overall == "passed":
+                overall = "redacted"
+        else:
+            checks.append({"guardrail": "PII Detection", "status": "passed", "detail": None})
+
+    t_guardrails = round((_time.time() - t_start) * 1000)
+
+    if overall == "blocked":
+        return {
+            "original": text, "sanitized": sanitized, "overall": overall,
+            "checks": checks, "provider": provider, "ai_response": None,
+            "timing_guardrails_ms": t_guardrails, "timing_total_ms": t_guardrails,
+        }
+
+    # -- Resolve API key (only needed if not blocked) --
+    if provider == "anthropic":
+        api_key = userstore.get_anthropic_key(user_id)
+        if not api_key:
+            raise HTTPException(status_code=400, detail="No Anthropic API key saved. Add one in the AI API Keys section above.")
+    else:
+        api_key = userstore.get_ai_key(user_id)
+        if not api_key:
+            raise HTTPException(status_code=400, detail="No OpenAI API key saved. Add one in the AI API Keys section above.")
+
+    # -- Forward to real AI provider --
+    ai_response_text = None
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            if provider == "anthropic":
+                resp = await client.post(
+                    f"{ANTHROPIC_API_BASE}/v1/messages",
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-api-key": api_key,
+                        "anthropic-version": ANTHROPIC_DEFAULT_VERSION,
+                    },
+                    json={
+                        "model": "claude-sonnet-4-20250514",
+                        "max_tokens": 150,
+                        "messages": [{"role": "user", "content": sanitized}],
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                ai_response_text = data.get("content", [{}])[0].get("text", "")
+            else:
+                resp = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                    },
+                    json={
+                        "model": "gpt-4o-mini",
+                        "max_tokens": 150,
+                        "messages": [{"role": "user", "content": sanitized}],
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                ai_response_text = data["choices"][0]["message"]["content"]
+    except httpx.HTTPStatusError as e:
+        ai_response_text = f"[API error: {e.response.status_code}]"
+    except Exception as e:
+        ai_response_text = f"[Error: {e}]"
+
+    t_total = round((_time.time() - t_start) * 1000)
+
+    audit.log(tenant_id, "passed", None, {"messages": [{"role": "user", "content": sanitized}]}, provider)
+
+    return {
+        "original": text, "sanitized": sanitized, "overall": overall,
+        "checks": checks, "provider": provider, "ai_response": ai_response_text,
+        "timing_guardrails_ms": t_guardrails, "timing_total_ms": t_total,
+    }
+
+
 @app.post("/billing/checkout")
 async def billing_checkout(request: Request):
     user_id = getattr(request.state, "user_id", None)
@@ -446,14 +582,15 @@ async def proxy_openai(
 ):
     # ── Auth ──
     bearer = _extract_bearer(authorization)
-    proxy_key = keystore.validate(bearer)
-    if proxy_key is None:
-        # Fallback: check user-provisioned proxy keys
-        user = userstore.get_by_proxy_key(bearer) if bearer else None
-        if user is None:
+    # Try user proxy key first, then global keystore
+    user = userstore.get_by_proxy_key(bearer) if bearer else None
+    if user:
+        proxy_key = ProxyKey(key=bearer, name=f"user:{user.email}", tenant_id=user.tenant_id)
+    else:
+        proxy_key = keystore.validate(bearer)
+        if proxy_key is None:
             raise HTTPException(status_code=401, detail={"error": "invalid_api_key",
                                                           "message": "Invalid or missing proxy key."})
-        proxy_key = ProxyKey(key=bearer, name=f"user:{user.email}", tenant_id=user.tenant_id)
 
     tenant_id = (
         proxy_key.tenant_id
@@ -558,16 +695,16 @@ async def proxy_anthropic(
     anthropic_version: Optional[str] = Header(None),
 ):
     # ── Auth ──
-    proxy_key = keystore.validate(x_api_key)
-    if proxy_key is None:
-        # Fallback: check user-provisioned proxy keys
-        user = userstore.get_by_proxy_key(x_api_key) if x_api_key else None
-        if user is None:
+    user = userstore.get_by_proxy_key(x_api_key) if x_api_key else None
+    if user:
+        proxy_key = ProxyKey(key=x_api_key, name=f"user:{user.email}", tenant_id=user.tenant_id)
+    else:
+        proxy_key = keystore.validate(x_api_key)
+        if proxy_key is None:
             raise HTTPException(status_code=401, detail={
                 "type": "error",
                 "error": {"type": "authentication_error", "message": "Invalid or missing proxy key."},
             })
-        proxy_key = ProxyKey(key=x_api_key, name=f"user:{user.email}", tenant_id=user.tenant_id)
 
     tenant_id = (
         proxy_key.tenant_id

@@ -314,6 +314,15 @@ class UserStore:
             ).fetchone()
         return _decrypt(row["ai_api_key_encrypted"]) if row else None
 
+    def get_anthropic_key(self, user_id: str) -> Optional[str]:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT anthropic_key_encrypted FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+        if row and row["anthropic_key_encrypted"]:
+            return _decrypt(row["anthropic_key_encrypted"])
+        return None
+
     def set_plan(self, user_id: str, plan: str) -> None:
         if plan not in PLANS:
             raise ValueError(f"Unknown plan: {plan}")
