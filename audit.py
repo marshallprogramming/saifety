@@ -38,8 +38,11 @@ def _row_to_dict(row) -> dict:
 
 # ── SQLite backend ────────────────────────────────────────────────────────────
 
+_DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
+
+
 class SQLiteBackend:
-    _DB_PATH = os.path.join(os.path.dirname(__file__), "audit.db")
+    _DB_PATH = os.path.join(_DATA_DIR, "audit.db")
 
     def __init__(self):
         self._init_db()

@@ -18,9 +18,13 @@ Anthropic clients:
 
 import time
 import os
+import shutil
 import httpx
 import yaml
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException, Header
+
+load_dotenv()  # no-op when .env doesn't exist (e.g. production)
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
@@ -44,6 +48,23 @@ from billing import handle_webhook as _stripe_webhook
 from email_utils import send_password_reset
 
 app = FastAPI(title="AI Guardrail Proxy", version="0.7.0")
+
+
+@app.on_event("startup")
+async def _seed_data_dir():
+    """
+    When DATA_DIR points to a fresh Fly volume, copy the bundled policy.yaml
+    into it so the app has a working default config on first boot.
+    """
+    data_dir = os.environ.get("DATA_DIR")
+    if not data_dir:
+        return
+    os.makedirs(data_dir, exist_ok=True)
+    dest = os.path.join(data_dir, "policy.yaml")
+    src  = os.path.join(os.path.dirname(__file__), "policy.yaml")
+    if not os.path.exists(dest) and os.path.exists(src):
+        shutil.copy(src, dest)
+        print(f"[startup] Seeded policy.yaml into {data_dir}")
 
 
 class DashboardAuthMiddleware(BaseHTTPMiddleware):
@@ -638,7 +659,8 @@ async def health():
 
 # ── Policy editor routes ───────────────────────────────────────────────────────
 
-_POLICY_FILE = os.path.join(os.path.dirname(__file__), "policy.yaml")
+_DATA_DIR    = os.environ.get("DATA_DIR", os.path.dirname(__file__))
+_POLICY_FILE = os.path.join(_DATA_DIR, "policy.yaml")
 
 
 def _load_raw_policy() -> dict:

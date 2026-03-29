@@ -10,6 +10,9 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 import yaml
 
+# Match main.py / users.py: Fly mounts persistent policy at DATA_DIR/policy.yaml
+_DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
+
 
 def _resolve_env(value: Optional[str]) -> Optional[str]:
     """Replace ${VAR_NAME} placeholders with environment variable values."""
@@ -88,7 +91,7 @@ class Policy:
 
 class PolicyEngine:
     _cache: dict[str, Policy] = {}
-    _policy_file = os.path.join(os.path.dirname(__file__), "policy.yaml")
+    _policy_file = os.path.join(_DATA_DIR, "policy.yaml")
 
     @classmethod
     def load_for_tenant(cls, tenant_id: str) -> Policy:

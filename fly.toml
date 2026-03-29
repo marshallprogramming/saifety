@@ -1,0 +1,46 @@
+# fly.toml — Fly.io deployment config for sAIfety
+#
+# First-time setup:
+#   fly launch --no-deploy          # creates the app and updates the app name below
+#   fly volumes create saifety_data --size 1 --region lhr
+#   fly secrets set \
+#     STRIPE_SECRET_KEY=sk_live_... \
+#     STRIPE_WEBHOOK_SECRET=whsec_... \
+#     STRIPE_PRICE_STARTER=price_... \
+#     STRIPE_PRICE_GROWTH=price_... \
+#     ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") \
+#     DASHBOARD_PASSWORD=choose-a-strong-password
+#   fly deploy
+
+app = "saifety"          # change to your actual Fly app name after `fly launch`
+primary_region = "lhr"   # London — change to the region closest to you
+
+[build]
+
+[env]
+  DATA_DIR = "/data"
+  PORT     = "8000"
+
+[http_service]
+  internal_port       = 8000
+  force_https         = true
+  auto_stop_machines  = false   # keep alive — proxy needs to respond instantly
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type       = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "256mb"
+
+[[mounts]]
+  source      = "saifety_data"   # volume name (must match `fly volumes create` above)
+  destination = "/data"
+
+[[vm.lifecycle]]
+  kill_signal  = "SIGTERM"
+  kill_timeout = "5s"

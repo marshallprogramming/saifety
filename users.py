@@ -26,8 +26,9 @@ import yaml
 
 from auth import generate_key
 
-_DB_PATH    = os.path.join(os.path.dirname(__file__), "users.db")
-_POLICY_FILE = os.path.join(os.path.dirname(__file__), "policy.yaml")
+_DATA_DIR    = os.environ.get("DATA_DIR", os.path.dirname(__file__))
+_DB_PATH     = os.path.join(_DATA_DIR, "users.db")
+_POLICY_FILE = os.path.join(_DATA_DIR, "policy.yaml")
 
 # Shared lock for all policy.yaml reads+writes (imported by main.py too)
 _POLICY_LOCK = threading.Lock()
