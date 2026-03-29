@@ -6,132 +6,150 @@
 
     <!-- Primary meta -->
     <title>sAIfety — Automatic AI Guardrails for Every App</title>
-    <meta name="description" content="A drop-in proxy that adds safety guardrails to every OpenAI and Anthropic API call. PII redaction, prompt injection blocking, topic filtering, toxicity detection — configured in YAML, zero code changes." />
-    <meta name="keywords" content="AI guardrails, LLM safety, OpenAI proxy, Anthropic proxy, PII redaction, prompt injection blocking, AI content moderation, LLM security, AI safety middleware" />
+    <meta
+      name="description"
+      content="A drop-in proxy that adds safety guardrails to every OpenAI and Anthropic API call. PII redaction, prompt injection blocking, topic filtering, toxicity detection — configured in YAML, zero code changes."
+    />
+    <meta
+      name="keywords"
+      content="AI guardrails, LLM safety, OpenAI proxy, Anthropic proxy, PII redaction, prompt injection blocking, AI content moderation, LLM security, AI safety middleware"
+    />
     <meta name="author" content="sAIfety" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://saifety.dev" />
 
     <!-- Open Graph -->
-    <meta property="og:type"        content="website" />
-    <meta property="og:url"         content="https://saifety.dev" />
-    <meta property="og:site_name"   content="sAIfety" />
-    <meta property="og:title"       content="sAIfety — Automatic AI Guardrails for Every App" />
-    <meta property="og:description" content="One proxy. Every guardrail. Works with OpenAI and Anthropic out of the box. Change one line of code — every AI call in your app is covered." />
-    <meta property="og:image"       content="https://saifety.dev/og-image.png" />
-    <meta property="og:image:width"  content="1200" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://saifety.dev" />
+    <meta property="og:site_name" content="sAIfety" />
+    <meta
+      property="og:title"
+      content="sAIfety — Automatic AI Guardrails for Every App"
+    />
+    <meta
+      property="og:description"
+      content="One proxy. Every guardrail. Works with OpenAI and Anthropic out of the box. Change one line of code — every AI call in your app is covered."
+    />
+    <meta property="og:image" content="https://saifety.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt"   content="sAIfety — drop-in AI guardrail proxy" />
-    <meta property="og:locale"      content="en_US" />
+    <meta property="og:image:alt" content="sAIfety — drop-in sAIfety" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter / X Card -->
-    <meta name="twitter:card"        content="summary_large_image" />
-    <meta name="twitter:title"       content="sAIfety — Automatic AI Guardrails for Every App" />
-    <meta name="twitter:description" content="Drop-in proxy for OpenAI and Anthropic. PII redaction, prompt injection blocking, topic filtering, toxicity detection. One URL change, zero code changes." />
-    <meta name="twitter:image"       content="https://saifety.dev/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="sAIfety — Automatic AI Guardrails for Every App"
+    />
+    <meta
+      name="twitter:description"
+      content="Drop-in proxy for OpenAI and Anthropic. PII redaction, prompt injection blocking, topic filtering, toxicity detection. One URL change, zero code changes."
+    />
+    <meta name="twitter:image" content="https://saifety.dev/og-image.png" />
 
     <!-- JSON-LD structured data -->
     <script type="application/ld+json">
-    [
-      {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "sAIfety",
-        "url": "https://saifety.dev",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Any",
-        "description": "A drop-in proxy server that automatically applies safety guardrails to every OpenAI and Anthropic API call. Covers PII redaction, prompt injection blocking, topic filtering, toxicity detection, rate limiting, and audit logging — configured in YAML with no code changes required.",
-        "featureList": [
-          "PII detection and redaction (email, phone, SSN, credit card)",
-          "Prompt injection and jailbreak blocking",
-          "Keyword-based topic filtering",
-          "Toxicity detection (wordlist, OpenAI Moderation API, Google Perspective)",
-          "Per-tenant guardrail policies via YAML",
-          "Per-tenant rate limiting",
-          "Proxy authentication — AI keys never leave your infrastructure",
-          "Streaming support (SSE pass-through with incremental checks)",
-          "Webhook alerts on guardrail events",
-          "Full audit log (SQLite or Postgres)",
-          "Live dashboard with policy editor",
-          "Compatible with OpenAI and Anthropic SDKs"
-        ],
-        "offers": [
-          {
-            "@type": "Offer",
-            "name": "Free",
-            "price": "0",
-            "priceCurrency": "USD",
-            "description": "10,000 requests per month"
-          },
-          {
-            "@type": "Offer",
-            "name": "Starter",
-            "price": "49",
-            "priceCurrency": "USD",
-            "description": "100,000 requests per month"
-          },
-          {
-            "@type": "Offer",
-            "name": "Growth",
-            "price": "199",
-            "priceCurrency": "USD",
-            "description": "1,000,000 requests per month"
-          }
-        ],
-        "author": {
-          "@type": "Organization",
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
           "name": "sAIfety",
-          "url": "https://saifety.dev"
+          "url": "https://saifety.dev",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Any",
+          "description": "A drop-in proxy server that automatically applies safety guardrails to every OpenAI and Anthropic API call. Covers PII redaction, prompt injection blocking, topic filtering, toxicity detection, rate limiting, and audit logging — configured in YAML with no code changes required.",
+          "featureList": [
+            "PII detection and redaction (email, phone, SSN, credit card)",
+            "Prompt injection and jailbreak blocking",
+            "Keyword-based topic filtering",
+            "Toxicity detection (wordlist, OpenAI Moderation API, Google Perspective)",
+            "Per-tenant guardrail policies via YAML",
+            "Per-tenant rate limiting",
+            "Proxy authentication — AI keys never leave your infrastructure",
+            "Streaming support (SSE pass-through with incremental checks)",
+            "Webhook alerts on guardrail events",
+            "Full audit log (SQLite or Postgres)",
+            "Live dashboard with policy editor",
+            "Compatible with OpenAI and Anthropic SDKs"
+          ],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Free",
+              "price": "0",
+              "priceCurrency": "USD",
+              "description": "10,000 requests per month"
+            },
+            {
+              "@type": "Offer",
+              "name": "Starter",
+              "price": "49",
+              "priceCurrency": "USD",
+              "description": "100,000 requests per month"
+            },
+            {
+              "@type": "Offer",
+              "name": "Growth",
+              "price": "199",
+              "priceCurrency": "USD",
+              "description": "1,000,000 requests per month"
+            }
+          ],
+          "author": {
+            "@type": "Organization",
+            "name": "sAIfety",
+            "url": "https://saifety.dev"
+          },
+          "license": "https://github.com/marshallprogramming/saifety/blob/main/LICENSE",
+          "codeRepository": "https://github.com/marshallprogramming/saifety"
         },
-        "license": "https://github.com/marshallprogramming/saifety/blob/main/LICENSE",
-        "codeRepository": "https://github.com/marshallprogramming/saifety"
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "sAIfety",
-        "url": "https://saifety.dev",
-        "description": "Automatic AI guardrails for every app — drop-in proxy for OpenAI and Anthropic APIs"
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is sAIfety?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "sAIfety is a drop-in proxy server that sits between your application and OpenAI or Anthropic. It automatically applies safety guardrails — PII redaction, prompt injection blocking, topic filtering, and toxicity detection — to every AI request and response without requiring code changes."
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "sAIfety",
+          "url": "https://saifety.dev",
+          "description": "Automatic AI guardrails for every app — drop-in proxy for OpenAI and Anthropic APIs"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is sAIfety?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "sAIfety is a drop-in proxy server that sits between your application and OpenAI or Anthropic. It automatically applies safety guardrails — PII redaction, prompt injection blocking, topic filtering, and toxicity detection — to every AI request and response without requiring code changes."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does sAIfety work with OpenAI and Anthropic?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. sAIfety supports both the OpenAI API (via POST /v1/chat/completions) and the Anthropic Messages API (via POST /v1/messages). You only need to change the base_url in your existing client — no other code changes are required."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I integrate sAIfety into my app?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Change one line: set base_url to your sAIfety proxy URL when initialising your OpenAI or Anthropic client. Your existing API key and all other code stays the same. All requests are then automatically checked against your configured guardrails."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is sAIfety open source?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. sAIfety is open source under the Apache 2.0 licence. The source code is available at github.com/marshallprogramming/saifety. A hosted, managed version is also available at saifety.dev."
+              }
             }
-          },
-          {
-            "@type": "Question",
-            "name": "Does sAIfety work with OpenAI and Anthropic?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. sAIfety supports both the OpenAI API (via POST /v1/chat/completions) and the Anthropic Messages API (via POST /v1/messages). You only need to change the base_url in your existing client — no other code changes are required."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I integrate sAIfety into my app?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Change one line: set base_url to your sAIfety proxy URL when initialising your OpenAI or Anthropic client. Your existing API key and all other code stays the same. All requests are then automatically checked against your configured guardrails."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is sAIfety open source?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. sAIfety is open source under the Apache 2.0 licence. The source code is available at github.com/marshallprogramming/saifety. A hosted, managed version is also available at saifety.dev."
-            }
-          }
-        ]
-      }
-    ]
+          ]
+        }
+      ]
     </script>
 
     <style>
@@ -898,7 +916,12 @@
       }
 
       @media (max-width: 768px) {
-        .pricing-grid { grid-template-columns: 1fr; max-width: 360px; margin-left: auto; margin-right: auto; }
+        .pricing-grid {
+          grid-template-columns: 1fr;
+          max-width: 360px;
+          margin-left: auto;
+          margin-right: auto;
+        }
       }
 
       .plan-card {
@@ -913,7 +936,7 @@
 
       .plan-card.popular {
         border-color: var(--accent);
-        background: rgba(99,102,241,0.05);
+        background: rgba(99, 102, 241, 0.05);
       }
 
       .plan-badge {
@@ -981,7 +1004,9 @@
         gap: 8px;
       }
 
-      .plan-features li:last-child { border-bottom: none; }
+      .plan-features li:last-child {
+        border-bottom: none;
+      }
 
       .plan-features li::before {
         content: "✓";
@@ -1006,14 +1031,19 @@
         color: #fff;
       }
 
-      .plan-cta.primary:hover { opacity: 0.85; }
+      .plan-cta.primary:hover {
+        opacity: 0.85;
+      }
 
       .plan-cta.secondary {
         border: 1px solid var(--border);
         color: var(--text);
       }
 
-      .plan-cta.secondary:hover { border-color: var(--accent); color: var(--accent); }
+      .plan-cta.secondary:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
 
       .plan-self-host {
         margin-top: 32px;
@@ -1022,7 +1052,10 @@
         color: var(--muted);
       }
 
-      .plan-self-host a { color: var(--accent); text-decoration: none; }
+      .plan-self-host a {
+        color: var(--accent);
+        text-decoration: none;
+      }
 
       /* ── CTA ── */
       .cta {
@@ -1260,14 +1293,18 @@
               Point your OpenAI or Anthropic client at the proxy instead of the
               AI API directly. That's the only code change needed.
             </p>
-            <div class="code-block"><span class="dim"># before</span>
-OpenAI(api_key=<span class="val">"sk-..."</span>)
+            <div class="code-block">
+              <span class="dim"># before</span> OpenAI(api_key=<span class="val"
+                >"sk-..."</span
+              >)
 
-<span class="add"># after — one line change</span>
-OpenAI(
-  api_key=<span class="val">"sk-..."</span>,
-  base_url=<span class="val">"http://localhost:8000/v1"</span>
-)</div>
+              <span class="add"># after — one line change</span>
+              OpenAI( api_key=<span class="val">"sk-..."</span>, base_url=<span
+                class="val"
+                >"http://localhost:8000/v1"</span
+              >
+              )
+            </div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
@@ -1276,15 +1313,17 @@ OpenAI(
               Edit <code>policy.yaml</code> to define which guardrails apply to
               which tenants. No code deploys — just save the file.
             </p>
-            <div class="code-block"><span class="key">pii</span>:
-  <span class="key">enabled</span>: <span class="val">true</span>
-  <span class="key">action</span>: <span class="val">redact</span>
-<span class="key">prompt_injection</span>:
-  <span class="key">enabled</span>: <span class="val">true</span>
-<span class="key">topic_filter</span>:
-  <span class="key">blocked_topics</span>:
-    - <span class="val">competitor</span>
-    - <span class="val">lawsuit</span></div>
+            <div class="code-block">
+              <span class="key">pii</span>: <span class="key">enabled</span>:
+              <span class="val">true</span> <span class="key">action</span>:
+              <span class="val">redact</span>
+              <span class="key">prompt_injection</span>:
+              <span class="key">enabled</span>: <span class="val">true</span>
+              <span class="key">topic_filter</span>:
+              <span class="key">blocked_topics</span>: -
+              <span class="val">competitor</span> -
+              <span class="val">lawsuit</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1593,18 +1632,21 @@ response = client.messages.create(
     <section class="pricing" id="pricing">
       <div class="container">
         <div class="section-label">Pricing</div>
-        <h2 class="section-title">Free to self-host. Hosted plans start at $49.</h2>
+        <h2 class="section-title">
+          Free to self-host. Hosted plans start at $49.
+        </h2>
         <p class="section-sub">
           Run sAIfety on your own infrastructure for free — forever. Or use our
           hosted service and skip the ops work entirely.
         </p>
 
         <div class="pricing-grid">
-
           <!-- Free -->
           <div class="plan-card">
             <div class="plan-name">Free</div>
-            <div class="plan-desc">Self-hosted. Full feature set, no restrictions.</div>
+            <div class="plan-desc">
+              Self-hosted. Full feature set, no restrictions.
+            </div>
             <div class="plan-price">$<span>0</span></div>
             <div class="plan-period">forever</div>
             <ul class="plan-features">
@@ -1615,7 +1657,12 @@ response = client.messages.create(
               <li>Audit log &amp; token metrics</li>
               <li>Community support</li>
             </ul>
-            <a href="https://github.com/marshallprogramming/saifety" class="plan-cta secondary" target="_blank" rel="noopener">
+            <a
+              href="https://github.com/marshallprogramming/saifety"
+              class="plan-cta secondary"
+              target="_blank"
+              rel="noopener"
+            >
               Clone on GitHub →
             </a>
           </div>
@@ -1624,7 +1671,9 @@ response = client.messages.create(
           <div class="plan-card popular">
             <div class="plan-badge">Most popular</div>
             <div class="plan-name">Starter</div>
-            <div class="plan-desc">Hosted. Great for small teams and side projects.</div>
+            <div class="plan-desc">
+              Hosted. Great for small teams and side projects.
+            </div>
             <div class="plan-price"><sup>$</sup>49</div>
             <div class="plan-period">per month</div>
             <ul class="plan-features">
@@ -1654,12 +1703,16 @@ response = client.messages.create(
             </ul>
             <a href="/signup" class="plan-cta secondary">Start free trial →</a>
           </div>
-
         </div>
 
         <div class="plan-self-host">
           Need higher limits or an on-prem license?
-          <a href="https://github.com/marshallprogramming/saifety/issues" target="_blank" rel="noopener">Get in touch →</a>
+          <a
+            href="https://github.com/marshallprogramming/saifety/issues"
+            target="_blank"
+            rel="noopener"
+            >Get in touch →</a
+          >
         </div>
       </div>
     </section>

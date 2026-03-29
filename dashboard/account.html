@@ -1,587 +1,791 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Guardrail Proxy — Account</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sAIfety — Account</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    :root {
-      --bg:       #0f1117;
-      --surface:  #1a1d27;
-      --border:   #2a2d3a;
-      --text:     #e2e8f0;
-      --muted:    #64748b;
-      --accent:   #6366f1;
-      --green:    #22c55e;
-      --red:      #ef4444;
-      --yellow:   #f59e0b;
-    }
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --border: #2a2d3a;
+        --text: #e2e8f0;
+        --muted: #64748b;
+        --accent: #6366f1;
+        --green: #22c55e;
+        --red: #ef4444;
+        --yellow: #f59e0b;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      font-size: 14px;
-      min-height: 100vh;
-    }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+        min-height: 100vh;
+      }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 24px;
-      border-bottom: 1px solid var(--border);
-    }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+      }
 
-    header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
-    header h1 span { color: var(--accent); }
+      header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+      }
+      header h1 span {
+        color: var(--accent);
+      }
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      font-size: 13px;
-      color: var(--muted);
-    }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 13px;
+        color: var(--muted);
+      }
 
-    .header-right a {
-      color: var(--muted);
-      text-decoration: none;
-      padding: 5px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 12px;
-    }
+      .header-right a {
+        color: var(--muted);
+        text-decoration: none;
+        padding: 5px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 12px;
+      }
 
-    .header-right a:hover { color: var(--text); border-color: var(--text); }
+      .header-right a:hover {
+        color: var(--text);
+        border-color: var(--text);
+      }
 
-    main {
-      max-width: 780px;
-      margin: 0 auto;
-      padding: 32px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+      main {
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 32px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
 
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
 
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-    }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
 
-    .card-header h2 { font-size: 14px; font-weight: 600; }
-    .card-header .hint { font-size: 12px; color: var(--muted); }
+      .card-header h2 {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .card-header .hint {
+        font-size: 12px;
+        color: var(--muted);
+      }
 
-    .card-body { padding: 20px; }
+      .card-body {
+        padding: 20px;
+      }
 
-    /* Proxy key display */
-    .key-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+      /* Proxy key display */
+      .key-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
 
-    .key-display {
-      flex: 1;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-family: "SF Mono", "Monaco", monospace;
-      font-size: 13px;
-      color: var(--accent);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+      .key-display {
+        flex: 1;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-family: "SF Mono", "Monaco", monospace;
+        font-size: 13px;
+        color: var(--accent);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-    button {
-      border: none;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 13px;
-      padding: 8px 14px;
-      transition: opacity 0.15s;
-    }
+      button {
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 13px;
+        padding: 8px 14px;
+        transition: opacity 0.15s;
+      }
 
-    button:hover { opacity: 0.85; }
+      button:hover {
+        opacity: 0.85;
+      }
 
-    .btn-primary  { background: var(--accent); color: #fff; }
-    .btn-ghost    { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
-    .btn-upgrade  { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-weight: 600; }
-    .btn-danger   { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-ghost {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-upgrade {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        font-weight: 600;
+      }
+      .btn-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--red);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
 
-    /* AI key form */
-    .key-form { display: flex; gap: 8px; }
-    .key-form input {
-      flex: 1;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 9px 13px;
-      border-radius: 8px;
-      font-size: 13px;
-      outline: none;
-    }
-    .key-form input:focus { border-color: var(--accent); }
+      /* AI key form */
+      .key-form {
+        display: flex;
+        gap: 8px;
+      }
+      .key-form input {
+        flex: 1;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 9px 13px;
+        border-radius: 8px;
+        font-size: 13px;
+        outline: none;
+      }
+      .key-form input:focus {
+        border-color: var(--accent);
+      }
 
-    /* Plan section */
-    .plan-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
+      /* Plan section */
+      .plan-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
 
-    .plan-free    { background: rgba(100,116,139,0.15); color: var(--muted); }
-    .plan-starter { background: rgba(99,102,241,0.15);  color: var(--accent); }
-    .plan-growth  { background: rgba(139,92,246,0.15);  color: #a78bfa; }
+      .plan-free {
+        background: rgba(100, 116, 139, 0.15);
+        color: var(--muted);
+      }
+      .plan-starter {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent);
+      }
+      .plan-growth {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+      }
 
-    .usage-bar-wrap {
-      height: 6px;
-      background: var(--border);
-      border-radius: 3px;
-      margin: 12px 0 6px;
-      overflow: hidden;
-    }
+      .usage-bar-wrap {
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        margin: 12px 0 6px;
+        overflow: hidden;
+      }
 
-    .usage-bar-fill {
-      height: 100%;
-      border-radius: 3px;
-      background: var(--accent);
-      transition: width 0.4s ease;
-    }
+      .usage-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--accent);
+        transition: width 0.4s ease;
+      }
 
-    .usage-bar-fill.warn  { background: var(--yellow); }
-    .usage-bar-fill.full  { background: var(--red); }
+      .usage-bar-fill.warn {
+        background: var(--yellow);
+      }
+      .usage-bar-fill.full {
+        background: var(--red);
+      }
 
-    .usage-label { font-size: 12px; color: var(--muted); }
+      .usage-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
 
-    .plan-features {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+      .plan-features {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
 
-    .feature {
-      font-size: 12px;
-      color: var(--muted);
-    }
+      .feature {
+        font-size: 12px;
+        color: var(--muted);
+      }
 
-    .feature strong { color: var(--text); }
+      .feature strong {
+        color: var(--text);
+      }
 
-    .upgrade-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-      flex-wrap: wrap;
-    }
+      .upgrade-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+      }
 
-    .upgrade-option {
-      flex: 1;
-      min-width: 140px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 16px;
-      text-align: center;
-    }
+      .upgrade-option {
+        flex: 1;
+        min-width: 140px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        text-align: center;
+      }
 
-    .upgrade-option .plan-price {
-      font-size: 22px;
-      font-weight: 700;
-      margin: 6px 0 2px;
-    }
+      .upgrade-option .plan-price {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 6px 0 2px;
+      }
 
-    .upgrade-option .plan-name { font-size: 13px; font-weight: 600; }
-    .upgrade-option .plan-desc { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+      .upgrade-option .plan-name {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .upgrade-option .plan-desc {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
 
-    /* Code snippet */
-    pre {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-      font-family: "SF Mono", "Monaco", "Consolas", monospace;
-      font-size: 12px;
-      line-height: 1.6;
-      overflow-x: auto;
-      white-space: pre;
-      color: #a5b4fc;
-      margin: 0;
-    }
+      /* Code snippet */
+      pre {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-family: "SF Mono", "Monaco", "Consolas", monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        overflow-x: auto;
+        white-space: pre;
+        color: #a5b4fc;
+        margin: 0;
+      }
 
-    pre .c { color: var(--muted); }
-    pre .s { color: #6ee7b7; }
-    pre .k { color: #f9a8d4; }
+      pre .c {
+        color: var(--muted);
+      }
+      pre .s {
+        color: #6ee7b7;
+      }
+      pre .k {
+        color: #f9a8d4;
+      }
 
-    .snippet-tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 10px;
-    }
+      .snippet-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
 
-    .snippet-tab {
-      padding: 5px 12px;
-      font-size: 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      background: transparent;
-      color: var(--muted);
-      border: 1px solid transparent;
-    }
+      .snippet-tab {
+        padding: 5px 12px;
+        font-size: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid transparent;
+      }
 
-    .snippet-tab.active { background: var(--surface); color: var(--text); border-color: var(--border); }
+      .snippet-tab.active {
+        background: var(--surface);
+        color: var(--text);
+        border-color: var(--border);
+      }
 
-    .snippet-content { display: none; }
-    .snippet-content.active { display: block; }
+      .snippet-content {
+        display: none;
+      }
+      .snippet-content.active {
+        display: block;
+      }
 
-    /* Toast */
-    #toast {
-      position: fixed;
-      bottom: 24px; right: 24px;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s;
-      z-index: 100;
-    }
+      /* Toast */
+      #toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        z-index: 100;
+      }
 
-    #toast.show.success { opacity: 1; background: rgba(34,197,94,0.9); color: #fff; }
-    #toast.show.info    { opacity: 1; background: rgba(99,102,241,0.9); color: #fff; }
+      #toast.show.success {
+        opacity: 1;
+        background: rgba(34, 197, 94, 0.9);
+        color: #fff;
+      }
+      #toast.show.info {
+        opacity: 1;
+        background: rgba(99, 102, 241, 0.9);
+        color: #fff;
+      }
 
-    /* Stats row */
-    .stats-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
-      margin-top: 4px;
-    }
+      /* Stats row */
+      .stats-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        margin-top: 4px;
+      }
 
-    .stat-item { text-align: center; }
-    .stat-value { font-size: 22px; font-weight: 700; line-height: 1; }
-    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .stat-item {
+        text-align: center;
+      }
+      .stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .stat-label {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
 
-    .saved-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      color: var(--green);
-      padding: 4px 10px;
-      background: rgba(34,197,94,0.1);
-      border-radius: 6px;
-    }
+      .saved-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--green);
+        padding: 4px 10px;
+        background: rgba(34, 197, 94, 0.1);
+        border-radius: 6px;
+      }
 
-    /* Onboarding banner */
-    .onboarding {
-      background: rgba(99,102,241,0.08);
-      border: 1px solid rgba(99,102,241,0.3);
-      border-radius: 12px;
-      padding: 20px 24px;
-      display: none;
-    }
+      /* Onboarding banner */
+      .onboarding {
+        background: rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 12px;
+        padding: 20px 24px;
+        display: none;
+      }
 
-    .onboarding.show { display: block; }
+      .onboarding.show {
+        display: block;
+      }
 
-    .onboarding h3 {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
+      .onboarding h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
 
-    .onboarding p {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 16px;
-    }
+      .onboarding p {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
 
-    .onboarding-steps {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+      .onboarding-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
 
-    .onboarding-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      font-size: 13px;
-    }
+      .onboarding-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 13px;
+      }
 
-    .step-num {
-      flex-shrink: 0;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+      .step-num {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-    .step-num.done {
-      background: var(--green);
-    }
+      .step-num.done {
+        background: var(--green);
+      }
 
-    .step-text strong { display: block; margin-bottom: 1px; }
-    .step-text span { color: var(--muted); }
+      .step-text strong {
+        display: block;
+        margin-bottom: 1px;
+      }
+      .step-text span {
+        color: var(--muted);
+      }
 
-    .onboarding-dismiss {
-      margin-top: 16px;
-      font-size: 12px;
-      color: var(--muted);
-      cursor: pointer;
-      background: none;
-      border: none;
-      padding: 0;
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
+      .onboarding-dismiss {
+        margin-top: 16px;
+        font-size: 12px;
+        color: var(--muted);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><span>Guardrail</span> Proxy</h1>
+      <div class="header-right">
+        <span id="header-email" style="color: var(--muted)"></span>
+        <a href="/">Dashboard</a>
+        <a href="/logout">Sign out</a>
+      </div>
+    </header>
 
-<header>
-  <h1><span>Guardrail</span> Proxy</h1>
-  <div class="header-right">
-    <span id="header-email" style="color:var(--muted)"></span>
-    <a href="/">Dashboard</a>
-    <a href="/logout">Sign out</a>
-  </div>
-</header>
+    <main id="main" style="display: none">
+      <!-- Onboarding banner (shown on first signup) -->
+      <div class="onboarding" id="onboarding">
+        <h3>Welcome to sAIfety — you're almost set up</h3>
+        <p>Three quick steps to start protecting your AI calls.</p>
+        <div class="onboarding-steps">
+          <div class="onboarding-step">
+            <div class="step-num done">1</div>
+            <div class="step-text">
+              <strong>Account created</strong>
+              <span>Your proxy key is ready below.</span>
+            </div>
+          </div>
+          <div class="onboarding-step">
+            <div class="step-num" id="step2-num">2</div>
+            <div class="step-text">
+              <strong>Save your AI API key</strong>
+              <span
+                >Paste your OpenAI or Anthropic key so sAIfety can forward
+                requests on your behalf.</span
+              >
+            </div>
+          </div>
+          <div class="onboarding-step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <strong>Point your code at the proxy</strong>
+              <span
+                >Change one line — use the Quick Start snippets at the bottom of
+                this page.</span
+              >
+            </div>
+          </div>
+        </div>
+        <button class="onboarding-dismiss" onclick="dismissOnboarding()">
+          Dismiss
+        </button>
+      </div>
 
-<main id="main" style="display:none">
-
-  <!-- Onboarding banner (shown on first signup) -->
-  <div class="onboarding" id="onboarding">
-    <h3>Welcome to sAIfety — you're almost set up</h3>
-    <p>Three quick steps to start protecting your AI calls.</p>
-    <div class="onboarding-steps">
-      <div class="onboarding-step">
-        <div class="step-num done">1</div>
-        <div class="step-text">
-          <strong>Account created</strong>
-          <span>Your proxy key is ready below.</span>
+      <!-- Proxy key -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Your Proxy Key</h2>
+          <span class="hint"
+            >Use this as your API key in the code snippets below</span
+          >
+        </div>
+        <div class="card-body">
+          <div class="key-row">
+            <div class="key-display" id="proxy-key">loading…</div>
+            <button class="btn-ghost" onclick="copyKey()">Copy</button>
+          </div>
         </div>
       </div>
-      <div class="onboarding-step">
-        <div class="step-num" id="step2-num">2</div>
-        <div class="step-text">
-          <strong>Save your AI API key</strong>
-          <span>Paste your OpenAI or Anthropic key so sAIfety can forward requests on your behalf.</span>
-        </div>
-      </div>
-      <div class="onboarding-step">
-        <div class="step-num">3</div>
-        <div class="step-text">
-          <strong>Point your code at the proxy</strong>
-          <span>Change one line — use the Quick Start snippets at the bottom of this page.</span>
-        </div>
-      </div>
-    </div>
-    <button class="onboarding-dismiss" onclick="dismissOnboarding()">Dismiss</button>
-  </div>
 
-  <!-- Proxy key -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Your Proxy Key</h2>
-      <span class="hint">Use this as your API key in the code snippets below</span>
-    </div>
-    <div class="card-body">
-      <div class="key-row">
-        <div class="key-display" id="proxy-key">loading…</div>
-        <button class="btn-ghost" onclick="copyKey()">Copy</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- AI API key -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Upstream AI API Key</h2>
-      <span class="hint">Your OpenAI or Anthropic key — encrypted at rest, never logged</span>
-    </div>
-    <div class="card-body">
-      <div id="ai-key-saved" class="saved-badge" style="display:none;margin-bottom:12px">
-        ✓ Key saved
-      </div>
-      <form class="key-form" action="/account/ai-key" method="POST">
-        <input type="password" name="ai_key" id="ai-key-input" placeholder="sk-... or sk-ant-..." autocomplete="off" />
-        <button type="submit" class="btn-primary">Save key</button>
-      </form>
-      <p style="font-size:12px;color:var(--muted);margin-top:10px">
-        This key is used to forward your requests to OpenAI or Anthropic.
-        It's encrypted using AES-256 (Fernet) and is never exposed in logs or the dashboard.
-      </p>
-    </div>
-  </div>
-
-  <!-- Plan + usage -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Plan &amp; Usage</h2>
-      <span id="plan-badge" class="plan-badge plan-free">Free</span>
-    </div>
-    <div class="card-body">
-      <div class="stats-row">
-        <div class="stat-item">
-          <div class="stat-value" id="stat-total">—</div>
-          <div class="stat-label">Requests (all time)</div>
+      <!-- AI API key -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Upstream AI API Key</h2>
+          <span class="hint"
+            >Your OpenAI or Anthropic key — encrypted at rest, never
+            logged</span
+          >
         </div>
-        <div class="stat-item">
-          <div class="stat-value" id="stat-pass" style="color:var(--green)">—</div>
-          <div class="stat-label">Pass rate</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="stat-blocked" style="color:var(--red)">—</div>
-          <div class="stat-label">Blocked</div>
+        <div class="card-body">
+          <div
+            id="ai-key-saved"
+            class="saved-badge"
+            style="display: none; margin-bottom: 12px"
+          >
+            ✓ Key saved
+          </div>
+          <form class="key-form" action="/account/ai-key" method="POST">
+            <input
+              type="password"
+              name="ai_key"
+              id="ai-key-input"
+              placeholder="sk-... or sk-ant-..."
+              autocomplete="off"
+            />
+            <button type="submit" class="btn-primary">Save key</button>
+          </form>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 10px">
+            This key is used to forward your requests to OpenAI or Anthropic.
+            It's encrypted using AES-256 (Fernet) and is never exposed in logs
+            or the dashboard.
+          </p>
         </div>
       </div>
 
-      <div id="monthly-usage" style="margin-top:16px;display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:12px;color:var(--muted)">Monthly requests</span>
-          <span style="font-size:12px;color:var(--muted)" id="monthly-label">—</span>
+      <!-- Plan + usage -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Plan &amp; Usage</h2>
+          <span id="plan-badge" class="plan-badge plan-free">Free</span>
         </div>
-        <div class="usage-bar-wrap">
-          <div class="usage-bar-fill" id="monthly-bar" style="width:0%"></div>
+        <div class="card-body">
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-value" id="stat-total">—</div>
+              <div class="stat-label">Requests (all time)</div>
+            </div>
+            <div class="stat-item">
+              <div
+                class="stat-value"
+                id="stat-pass"
+                style="color: var(--green)"
+              >
+                —
+              </div>
+              <div class="stat-label">Pass rate</div>
+            </div>
+            <div class="stat-item">
+              <div
+                class="stat-value"
+                id="stat-blocked"
+                style="color: var(--red)"
+              >
+                —
+              </div>
+              <div class="stat-label">Blocked</div>
+            </div>
+          </div>
+
+          <div id="monthly-usage" style="margin-top: 16px; display: none">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+              "
+            >
+              <span style="font-size: 12px; color: var(--muted)"
+                >Monthly requests</span
+              >
+              <span
+                style="font-size: 12px; color: var(--muted)"
+                id="monthly-label"
+                >—</span
+              >
+            </div>
+            <div class="usage-bar-wrap">
+              <div
+                class="usage-bar-fill"
+                id="monthly-bar"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+
+          <div id="upgrade-section"></div>
         </div>
       </div>
 
-      <div id="upgrade-section"></div>
-    </div>
-  </div>
+      <!-- Quick start -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Quick Start</h2>
+          <span class="hint"
+            >Copy and paste — your proxy key is pre-filled</span
+          >
+        </div>
+        <div class="card-body">
+          <div class="snippet-tabs">
+            <button
+              class="snippet-tab active"
+              onclick="showSnippet('python-openai', this)"
+            >
+              Python / OpenAI
+            </button>
+            <button
+              class="snippet-tab"
+              onclick="showSnippet('python-anthropic', this)"
+            >
+              Python / Anthropic
+            </button>
+            <button class="snippet-tab" onclick="showSnippet('ts', this)">
+              TypeScript
+            </button>
+            <button class="snippet-tab" onclick="showSnippet('curl', this)">
+              cURL
+            </button>
+          </div>
 
-  <!-- Quick start -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Quick Start</h2>
-      <span class="hint">Copy and paste — your proxy key is pre-filled</span>
-    </div>
-    <div class="card-body">
-      <div class="snippet-tabs">
-        <button class="snippet-tab active" onclick="showSnippet('python-openai', this)">Python / OpenAI</button>
-        <button class="snippet-tab" onclick="showSnippet('python-anthropic', this)">Python / Anthropic</button>
-        <button class="snippet-tab" onclick="showSnippet('ts', this)">TypeScript</button>
-        <button class="snippet-tab" onclick="showSnippet('curl', this)">cURL</button>
+          <div class="snippet-content active" id="snip-python-openai">
+            <pre id="code-python-openai"></pre>
+          </div>
+          <div class="snippet-content" id="snip-python-anthropic">
+            <pre id="code-python-anthropic"></pre>
+          </div>
+          <div class="snippet-content" id="snip-ts">
+            <pre id="code-ts"></pre>
+          </div>
+          <div class="snippet-content" id="snip-curl">
+            <pre id="code-curl"></pre>
+          </div>
+
+          <button
+            class="btn-ghost"
+            style="margin-top: 12px; font-size: 12px"
+            onclick="copySnippet()"
+          >
+            Copy snippet
+          </button>
+        </div>
       </div>
+    </main>
 
-      <div class="snippet-content active" id="snip-python-openai">
-        <pre id="code-python-openai"></pre>
-      </div>
-      <div class="snippet-content" id="snip-python-anthropic">
-        <pre id="code-python-anthropic"></pre>
-      </div>
-      <div class="snippet-content" id="snip-ts">
-        <pre id="code-ts"></pre>
-      </div>
-      <div class="snippet-content" id="snip-curl">
-        <pre id="code-curl"></pre>
-      </div>
+    <div id="toast"></div>
 
-      <button class="btn-ghost" style="margin-top:12px;font-size:12px" onclick="copySnippet()">Copy snippet</button>
-    </div>
-  </div>
+    <script>
+      const BASE = window.location.origin;
+      let _data = null;
+      let _activeSnippet = "python-openai";
 
-</main>
+      async function load() {
+        try {
+          const r = await fetch("/account/data");
+          if (!r.ok) {
+            window.location.href = "/login";
+            return;
+          }
+          _data = await r.json();
+          render(_data);
+          document.getElementById("main").style.display = "flex";
+        } catch (e) {
+          window.location.href = "/login";
+        }
+      }
 
-<div id="toast"></div>
+      function render(d) {
+        document.getElementById("header-email").textContent = d.email;
+        document.getElementById("proxy-key").textContent = d.proxy_key;
 
-<script>
-  const BASE = window.location.origin;
-  let _data = null;
-  let _activeSnippet = 'python-openai';
+        if (d.has_ai_key) {
+          document.getElementById("ai-key-saved").style.display = "inline-flex";
+          document.getElementById("ai-key-input").placeholder =
+            "••••••••••••••••••• (replace to update)";
+        }
 
-  async function load() {
-    try {
-      const r = await fetch('/account/data');
-      if (!r.ok) { window.location.href = '/login'; return; }
-      _data = await r.json();
-      render(_data);
-      document.getElementById('main').style.display = 'flex';
-    } catch(e) {
-      window.location.href = '/login';
-    }
-  }
+        // Plan badge
+        const badge = document.getElementById("plan-badge");
+        badge.textContent = d.plan.charAt(0).toUpperCase() + d.plan.slice(1);
+        badge.className = `plan-badge plan-${d.plan}`;
 
-  function render(d) {
-    document.getElementById('header-email').textContent = d.email;
-    document.getElementById('proxy-key').textContent = d.proxy_key;
+        // Stats
+        document.getElementById("stat-total").textContent =
+          d.stats.total_requests.toLocaleString();
+        document.getElementById("stat-pass").textContent =
+          d.stats.pass_rate + "%";
+        document.getElementById("stat-blocked").textContent =
+          d.stats.blocked_requests.toLocaleString();
 
-    if (d.has_ai_key) {
-      document.getElementById('ai-key-saved').style.display = 'inline-flex';
-      document.getElementById('ai-key-input').placeholder = '••••••••••••••••••• (replace to update)';
-    }
+        // Upgrade section
+        renderUpgradeSection(d);
 
-    // Plan badge
-    const badge = document.getElementById('plan-badge');
-    badge.textContent = d.plan.charAt(0).toUpperCase() + d.plan.slice(1);
-    badge.className = `plan-badge plan-${d.plan}`;
+        // Code snippets
+        renderSnippets(d.proxy_key);
+      }
 
-    // Stats
-    document.getElementById('stat-total').textContent   = d.stats.total_requests.toLocaleString();
-    document.getElementById('stat-pass').textContent    = d.stats.pass_rate + '%';
-    document.getElementById('stat-blocked').textContent = d.stats.blocked_requests.toLocaleString();
+      function renderUpgradeSection(d) {
+        const el = document.getElementById("upgrade-section");
+        const plan = d.plan;
 
-    // Upgrade section
-    renderUpgradeSection(d);
-
-    // Code snippets
-    renderSnippets(d.proxy_key);
-  }
-
-  function renderUpgradeSection(d) {
-    const el = document.getElementById('upgrade-section');
-    const plan = d.plan;
-
-    if (plan === 'growth') {
-      el.innerHTML = `
+        if (plan === "growth") {
+          el.innerHTML = `
         <p style="font-size:13px;color:var(--muted);margin-top:16px">
           You're on the Growth plan.
           <a href="/billing/portal" style="color:var(--accent);text-decoration:none">Manage billing →</a>
         </p>`;
-      return;
-    }
+          return;
+        }
 
-    const plans = [
-      { id: 'starter', name: 'Starter', price: '$49', desc: '100k req/month · 60 rpm', current: plan === 'starter' },
-      { id: 'growth',  name: 'Growth',  price: '$199', desc: '1M req/month · 200 rpm',  current: false },
-    ];
+        const plans = [
+          {
+            id: "starter",
+            name: "Starter",
+            price: "$49",
+            desc: "100k req/month · 60 rpm",
+            current: plan === "starter",
+          },
+          {
+            id: "growth",
+            name: "Growth",
+            price: "$199",
+            desc: "1M req/month · 200 rpm",
+            current: false,
+          },
+        ];
 
-    const cards = plans.map(p => {
-      if (p.current) {
-        return `<div class="upgrade-option" style="border-color:var(--accent)">
+        const cards = plans
+          .map((p) => {
+            if (p.current) {
+              return `<div class="upgrade-option" style="border-color:var(--accent)">
           <div class="plan-name">${p.name}</div>
           <div class="plan-price">${p.price}<span style="font-size:13px;font-weight:400;color:var(--muted)">/mo</span></div>
           <div class="plan-desc">${p.desc}</div>
           <span class="saved-badge" style="justify-content:center">✓ Current plan</span>
         </div>`;
-      }
-      return `<div class="upgrade-option">
+            }
+            return `<div class="upgrade-option">
         <div class="plan-name">${p.name}</div>
         <div class="plan-price">${p.price}<span style="font-size:13px;font-weight:400;color:var(--muted)">/mo</span></div>
         <div class="plan-desc">${p.desc}</div>
@@ -590,17 +794,23 @@
           <button type="submit" class="btn-upgrade" style="width:100%;margin-top:4px">Upgrade</button>
         </form>
       </div>`;
-    }).join('');
+          })
+          .join("");
 
-    el.innerHTML = `<div class="upgrade-row">${cards}</div>
-      ${plan !== 'free' ? `<p style="font-size:12px;color:var(--muted);margin-top:12px;text-align:center">
+        el.innerHTML = `<div class="upgrade-row">${cards}</div>
+      ${
+        plan !== "free"
+          ? `<p style="font-size:12px;color:var(--muted);margin-top:12px;text-align:center">
         <a href="/billing/portal" style="color:var(--accent);text-decoration:none">Manage billing →</a>
-      </p>` : ''}`;
-  }
+      </p>`
+          : ""
+      }`;
+      }
 
-  function renderSnippets(proxyKey) {
-    document.getElementById('code-python-openai').textContent =
-`from openai import OpenAI
+      function renderSnippets(proxyKey) {
+        document.getElementById(
+          "code-python-openai"
+        ).textContent = `from openai import OpenAI
 
 client = OpenAI(
     api_key="${proxyKey}",
@@ -613,8 +823,9 @@ response = client.chat.completions.create(
 )
 print(response.choices[0].message.content)`;
 
-    document.getElementById('code-python-anthropic').textContent =
-`from anthropic import Anthropic
+        document.getElementById(
+          "code-python-anthropic"
+        ).textContent = `from anthropic import Anthropic
 
 client = Anthropic(
     api_key="${proxyKey}",
@@ -628,8 +839,9 @@ response = client.messages.create(
 )
 print(response.content[0].text)`;
 
-    document.getElementById('code-ts').textContent =
-`import OpenAI from "openai";
+        document.getElementById(
+          "code-ts"
+        ).textContent = `import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: "${proxyKey}",
@@ -642,96 +854,113 @@ const response = await client.chat.completions.create({
 });
 console.log(response.choices[0].message.content);`;
 
-    document.getElementById('code-curl').textContent =
-`curl ${BASE}/v1/chat/completions \\
+        document.getElementById(
+          "code-curl"
+        ).textContent = `curl ${BASE}/v1/chat/completions \\
   -H "Authorization: Bearer ${proxyKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "gpt-4o",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'`;
-  }
+      }
 
-  function showSnippet(name, btn) {
-    _activeSnippet = name;
-    document.querySelectorAll('.snippet-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.snippet-content').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('snip-' + name).classList.add('active');
-  }
+      function showSnippet(name, btn) {
+        _activeSnippet = name;
+        document
+          .querySelectorAll(".snippet-tab")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".snippet-content")
+          .forEach((c) => c.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("snip-" + name).classList.add("active");
+      }
 
-  function copyKey() {
-    const key = document.getElementById('proxy-key').textContent;
-    navigator.clipboard.writeText(key).then(() => toast('Proxy key copied', 'success'));
-  }
+      function copyKey() {
+        const key = document.getElementById("proxy-key").textContent;
+        navigator.clipboard
+          .writeText(key)
+          .then(() => toast("Proxy key copied", "success"));
+      }
 
-  function copySnippet() {
-    const el = document.getElementById('code-' + _activeSnippet);
-    navigator.clipboard.writeText(el.textContent).then(() => toast('Snippet copied', 'success'));
-  }
+      function copySnippet() {
+        const el = document.getElementById("code-" + _activeSnippet);
+        navigator.clipboard
+          .writeText(el.textContent)
+          .then(() => toast("Snippet copied", "success"));
+      }
 
-  let _toastTimer;
-  function toast(msg, type = 'success') {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.className = `show ${type}`;
-    clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-  }
+      let _toastTimer;
+      function toast(msg, type = "success") {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.className = `show ${type}`;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => el.classList.remove("show"), 2500);
+      }
 
-  // ── Onboarding banner ────────────────────────────────────────────────────────
+      // ── Onboarding banner ────────────────────────────────────────────────────────
 
-  function showOnboarding(hasAiKey) {
-    // Only show if the user arrived via signup (?new=1) and hasn't dismissed
-    if (sessionStorage.getItem('onboarding_dismissed')) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('new') !== '1') return;
-    if (hasAiKey) {
-      document.getElementById('step2-num').classList.add('done');
-    }
-    document.getElementById('onboarding').classList.add('show');
-  }
+      function showOnboarding(hasAiKey) {
+        // Only show if the user arrived via signup (?new=1) and hasn't dismissed
+        if (sessionStorage.getItem("onboarding_dismissed")) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("new") !== "1") return;
+        if (hasAiKey) {
+          document.getElementById("step2-num").classList.add("done");
+        }
+        document.getElementById("onboarding").classList.add("show");
+      }
 
-  function dismissOnboarding() {
-    sessionStorage.setItem('onboarding_dismissed', '1');
-    document.getElementById('onboarding').classList.remove('show');
-  }
+      function dismissOnboarding() {
+        sessionStorage.setItem("onboarding_dismissed", "1");
+        document.getElementById("onboarding").classList.remove("show");
+      }
 
-  // ── Monthly usage bar ─────────────────────────────────────────────────────
+      // ── Monthly usage bar ─────────────────────────────────────────────────────
 
-  function renderMonthlyUsage(d) {
-    const cap = d.plan_info?.monthly_requests;
-    const used = d.monthly_used ?? 0;
-    if (!cap) return;
-    const pct = Math.min(100, (used / cap) * 100);
-    const el = document.getElementById('monthly-usage');
-    const bar = document.getElementById('monthly-bar');
-    const label = document.getElementById('monthly-label');
-    el.style.display = 'block';
-    bar.style.width = pct + '%';
-    bar.className = 'usage-bar-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
-    label.textContent = `${used.toLocaleString()} / ${cap.toLocaleString()}`;
-  }
+      function renderMonthlyUsage(d) {
+        const cap = d.plan_info?.monthly_requests;
+        const used = d.monthly_used ?? 0;
+        if (!cap) return;
+        const pct = Math.min(100, (used / cap) * 100);
+        const el = document.getElementById("monthly-usage");
+        const bar = document.getElementById("monthly-bar");
+        const label = document.getElementById("monthly-label");
+        el.style.display = "block";
+        bar.style.width = pct + "%";
+        bar.className =
+          "usage-bar-fill" + (pct >= 100 ? " full" : pct >= 80 ? " warn" : "");
+        label.textContent = `${used.toLocaleString()} / ${cap.toLocaleString()}`;
+      }
 
-  // ── Patch render to call new helpers ─────────────────────────────────────
+      // ── Patch render to call new helpers ─────────────────────────────────────
 
-  const _origRender = render;
-  render = function(d) {
-    _origRender(d);
-    showOnboarding(d.has_ai_key);
-    renderMonthlyUsage(d);
-  };
+      const _origRender = render;
+      render = function (d) {
+        _origRender(d);
+        showOnboarding(d.has_ai_key);
+        renderMonthlyUsage(d);
+      };
 
-  // Show success message if redirected back from Stripe checkout
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('checkout') === 'success') {
-    setTimeout(() => toast('Payment successful — your plan has been upgraded!', 'success'), 500);
-  }
-  if (params.get('saved') === '1') {
-    setTimeout(() => toast('AI key saved', 'success'), 300);
-  }
+      // Show success message if redirected back from Stripe checkout
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("checkout") === "success") {
+        setTimeout(
+          () =>
+            toast(
+              "Payment successful — your plan has been upgraded!",
+              "success"
+            ),
+          500
+        );
+      }
+      if (params.get("saved") === "1") {
+        setTimeout(() => toast("AI key saved", "success"), 300);
+      }
 
-  load();
-</script>
-</body>
+      load();
+    </script>
+  </body>
 </html>

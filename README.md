@@ -1,4 +1,4 @@
-# AI Guardrail Proxy
+# sAIfety
 
 A lightweight server that sits between your application and an AI API, automatically applying safety guardrails to every request and response — without changing your existing code.
 
@@ -205,7 +205,9 @@ async function sendMessage(text: string) {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages: [...history, { role: "user", content: text }] }),
+    body: JSON.stringify({
+      messages: [...history, { role: "user", content: text }],
+    }),
   });
 
   if (!res.ok) {
@@ -215,7 +217,10 @@ async function sendMessage(text: string) {
   }
 
   const data = await res.json();
-  setHistory(h => [...h, { role: "assistant", content: data.choices[0].message.content }]);
+  setHistory((h) => [
+    ...h,
+    { role: "assistant", content: data.choices[0].message.content },
+  ]);
 }
 ```
 
@@ -225,18 +230,18 @@ async function sendMessage(text: string) {
 
 ### Input guardrails
 
-| Guardrail | What it detects | Actions |
-|---|---|---|
-| **PII detection** | Email addresses, US phone numbers, SSNs (`XXX-XX-XXXX`), credit card numbers | `redact` — replaces in-place (e.g. `[REDACTED_EMAIL]`) before the request reaches the model<br>`block` — rejects the request with a 400 error |
-| **Prompt injection** | "Ignore all previous instructions", jailbreak patterns, persona hijacking, instruction overrides | `block` |
-| **Topic filter** | Any keywords you list as off-limits | `block` |
+| Guardrail            | What it detects                                                                                  | Actions                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PII detection**    | Email addresses, US phone numbers, SSNs (`XXX-XX-XXXX`), credit card numbers                     | `redact` — replaces in-place (e.g. `[REDACTED_EMAIL]`) before the request reaches the model<br>`block` — rejects the request with a 400 error |
+| **Prompt injection** | "Ignore all previous instructions", jailbreak patterns, persona hijacking, instruction overrides | `block`                                                                                                                                       |
+| **Topic filter**     | Any keywords you list as off-limits                                                              | `block`                                                                                                                                       |
 
 ### Output guardrails
 
-| Guardrail | What it checks | Action |
-|---|---|---|
-| **Max length** | Response character count exceeds your limit | `block` (502) |
-| **Toxicity** | Slurs, hate speech, self-harm encouragement | `block` (502) |
+| Guardrail       | What it checks                                | Action        |
+| --------------- | --------------------------------------------- | ------------- |
+| **Max length**  | Response character count exceeds your limit   | `block` (502) |
+| **Toxicity**    | Slurs, hate speech, self-harm encouragement   | `block` (502) |
 | **JSON schema** | Response doesn't match the schema you defined | `block` (502) |
 
 ---
@@ -247,15 +252,14 @@ All guardrail rules live in `policy.yaml`. No code changes needed to update a ru
 
 ```yaml
 tenants:
-
   default:
     upstream_url: "https://api.openai.com/v1/chat/completions"
-    upstream_api_key: "${OPENAI_API_KEY}"   # reads from environment
+    upstream_api_key: "${OPENAI_API_KEY}" # reads from environment
 
     input:
       pii:
         enabled: true
-        action: redact          # silently strip PII before it reaches the model
+        action: redact # silently strip PII before it reaches the model
         types: [email, phone, ssn, credit_card]
 
       prompt_injection:
@@ -268,11 +272,11 @@ tenants:
         blocked_topics: []
 
     output:
-      max_length: null          # null = no limit
+      max_length: null # null = no limit
       toxicity:
         enabled: true
-        provider: wordlist      # "wordlist" | "openai" | "perspective"
-      json_schema: null         # null = no schema enforcement
+        provider: wordlist # "wordlist" | "openai" | "perspective"
+      json_schema: null # null = no schema enforcement
 
     rate_limit:
       enabled: false
@@ -292,15 +296,14 @@ Add as many tenants as you need. Each tenant can have a completely different pol
 
 ```yaml
 tenants:
-
   default:
     # ... base config ...
 
-  customer_chatbot:             # strict — public-facing
+  customer_chatbot: # strict — public-facing
     input:
       pii:
         enabled: true
-        action: block           # reject rather than silently redact
+        action: block # reject rather than silently redact
       topic_filter:
         enabled: true
         blocked_topics: [competitor, lawsuit, refund, pricing]
@@ -308,13 +311,13 @@ tenants:
       max_length: 2000
       toxicity:
         enabled: true
-        provider: openai        # ML-based for customer-facing tenants
+        provider: openai # ML-based for customer-facing tenants
         api_key: "${OPENAI_API_KEY}"
     rate_limit:
       enabled: true
       requests_per_minute: 20
 
-  internal_tools:               # permissive — internal use only
+  internal_tools: # permissive — internal use only
     input:
       pii:
         enabled: false
@@ -324,7 +327,7 @@ tenants:
       toxicity:
         enabled: false
 
-  structured_output:            # enforce a JSON response schema
+  structured_output: # enforce a JSON response schema
     output:
       json_schema:
         type: object
@@ -369,11 +372,11 @@ By default the proxy is open (useful for local dev). To require clients to authe
 # keys.yaml  (gitignored — never commit this)
 keys:
   - key: "sk-proxy-abc123"
-    tenant_id: "customer_chatbot"    # always routes to this tenant
+    tenant_id: "customer_chatbot" # always routes to this tenant
     description: "Production app"
 
   - key: "sk-proxy-def456"
-    tenant_id: "__from_header__"     # tenant resolved from X-Tenant-ID header
+    tenant_id: "__from_header__" # tenant resolved from X-Tenant-ID header
     description: "Internal tools"
 ```
 
@@ -402,6 +405,7 @@ python3 -c "from auth import generate_key; print(generate_key())"
 Visit [http://localhost:8000](http://localhost:8000) after starting the proxy.
 
 **Overview tab:**
+
 - Total requests, blocked count, and pass rate
 - Top block reasons — bar chart of the most common guardrail triggers
 - Live activity feed — every request with timestamp, tenant, API (OpenAI / Anthropic), outcome, and block reason
@@ -409,6 +413,7 @@ Visit [http://localhost:8000](http://localhost:8000) after starting the proxy.
 - Filter by tenant or API; auto-refreshes every 10 seconds
 
 **Policy Editor tab:**
+
 - View and edit every tenant's guardrail rules directly in the browser
 - Toggle guardrails on/off, change actions, update blocked topics, adjust rate limits
 - Create new tenants or delete existing ones
@@ -456,7 +461,7 @@ Receive an HTTP POST whenever a guardrail fires:
 webhook:
   enabled: true
   url: "${WEBHOOK_URL}"
-  secret: "${WEBHOOK_SECRET}"   # optional — enables HMAC-SHA256 payload signing
+  secret: "${WEBHOOK_SECRET}" # optional — enables HMAC-SHA256 payload signing
   on:
     - input_blocked
     - output_blocked
@@ -467,13 +472,13 @@ Payload format:
 
 ```json
 {
-  "event":     "input_blocked",
+  "event": "input_blocked",
   "tenant_id": "customer_chatbot",
-  "api":       "openai",
+  "api": "openai",
   "guardrail": "pii",
-  "reason":    "PII detected: email address",
+  "reason": "PII detected: email address",
   "timestamp": 1711234567.89,
-  "messages":  [{"role": "user", "content": "..."}]
+  "messages": [{ "role": "user", "content": "..." }]
 }
 ```
 
@@ -485,11 +490,11 @@ When `secret` is set, every request includes an `X-Saifety-Signature: sha256=<hm
 
 Three providers, configured per tenant:
 
-| Provider | API key required | Notes |
-|---|---|---|
-| `wordlist` | No | Built-in regex patterns. Fast, zero cost. Default. |
-| `openai` | Yes — `OPENAI_API_KEY` | [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation). Free with your OpenAI account. |
-| `perspective` | Yes — `PERSPECTIVE_API_KEY` | [Google Perspective API](https://perspectiveapi.com). Configurable score threshold. |
+| Provider      | API key required            | Notes                                                                                                       |
+| ------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `wordlist`    | No                          | Built-in regex patterns. Fast, zero cost. Default.                                                          |
+| `openai`      | Yes — `OPENAI_API_KEY`      | [OpenAI Moderation API](https://platform.openai.com/docs/guides/moderation). Free with your OpenAI account. |
+| `perspective` | Yes — `PERSPECTIVE_API_KEY` | [Google Perspective API](https://perspectiveapi.com). Configurable score threshold.                         |
 
 ```yaml
 output:
@@ -533,7 +538,11 @@ Response:
       "output_tokens": 21150,
       "total_tokens": 69470,
       "by_api": {
-        "openai": { "requests": 142, "input_tokens": 48320, "output_tokens": 21150 }
+        "openai": {
+          "requests": 142,
+          "input_tokens": 48320,
+          "output_tokens": 21150
+        }
       }
     }
   ],
@@ -564,23 +573,23 @@ Both `postgres://` and `postgresql://` URL schemes are accepted. The table is cr
 
 ## API reference
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/v1/chat/completions` | OpenAI-compatible proxy endpoint |
-| `POST` | `/v1/messages` | Anthropic-compatible proxy endpoint |
-| `GET` | `/` | Dashboard UI |
-| `GET` | `/login` | Dashboard login page (when auth enabled) |
-| `GET` | `/logout` | Clear dashboard session |
-| `GET` | `/audit` | Audit log entries. Params: `limit`, `tenant_id`, `api` |
-| `GET` | `/stats` | Aggregated pass/block stats. Param: `tenant_id` |
-| `GET` | `/metrics` | Token usage by tenant. Params: `days`, `tenant_id` |
-| `GET` | `/rate-limits` | Current rate limit usage. Param: `tenant_id` |
-| `GET` | `/policy` | All tenant configs |
-| `GET` | `/policy/{tenant_id}` | Single tenant config |
-| `PUT` | `/policy/{tenant_id}` | Update a tenant's config |
-| `DELETE` | `/policy/{tenant_id}` | Delete a tenant |
-| `GET` | `/auth-status` | Whether proxy key auth is enabled |
-| `GET` | `/health` | Health check |
+| Method   | Path                   | Description                                            |
+| -------- | ---------------------- | ------------------------------------------------------ |
+| `POST`   | `/v1/chat/completions` | OpenAI-compatible proxy endpoint                       |
+| `POST`   | `/v1/messages`         | Anthropic-compatible proxy endpoint                    |
+| `GET`    | `/`                    | Dashboard UI                                           |
+| `GET`    | `/login`               | Dashboard login page (when auth enabled)               |
+| `GET`    | `/logout`              | Clear dashboard session                                |
+| `GET`    | `/audit`               | Audit log entries. Params: `limit`, `tenant_id`, `api` |
+| `GET`    | `/stats`               | Aggregated pass/block stats. Param: `tenant_id`        |
+| `GET`    | `/metrics`             | Token usage by tenant. Params: `days`, `tenant_id`     |
+| `GET`    | `/rate-limits`         | Current rate limit usage. Param: `tenant_id`           |
+| `GET`    | `/policy`              | All tenant configs                                     |
+| `GET`    | `/policy/{tenant_id}`  | Single tenant config                                   |
+| `PUT`    | `/policy/{tenant_id}`  | Update a tenant's config                               |
+| `DELETE` | `/policy/{tenant_id}`  | Delete a tenant                                        |
+| `GET`    | `/auth-status`         | Whether proxy key auth is enabled                      |
+| `GET`    | `/health`              | Health check                                           |
 
 ---
 
@@ -623,15 +632,15 @@ ai-guardrail-proxy/
 
 ## Environment variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | If using OpenAI | Forwarded to OpenAI when `upstream_api_key: "${OPENAI_API_KEY}"` in policy |
-| `ANTHROPIC_API_KEY` | If using Anthropic | Same pattern for Anthropic upstream key |
-| `DATABASE_URL` | No | Postgres connection string. SQLite used if unset. |
-| `DASHBOARD_PASSWORD` | No | Enables dashboard login. Dashboard is open if unset. |
-| `WEBHOOK_URL` | No | Webhook delivery endpoint. Referenced from `policy.yaml`. |
-| `WEBHOOK_SECRET` | No | HMAC signing secret for webhook payloads. |
-| `PERSPECTIVE_API_KEY` | No | Required only when using the Perspective toxicity provider. |
+| Variable              | Required           | Description                                                                |
+| --------------------- | ------------------ | -------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`      | If using OpenAI    | Forwarded to OpenAI when `upstream_api_key: "${OPENAI_API_KEY}"` in policy |
+| `ANTHROPIC_API_KEY`   | If using Anthropic | Same pattern for Anthropic upstream key                                    |
+| `DATABASE_URL`        | No                 | Postgres connection string. SQLite used if unset.                          |
+| `DASHBOARD_PASSWORD`  | No                 | Enables dashboard login. Dashboard is open if unset.                       |
+| `WEBHOOK_URL`         | No                 | Webhook delivery endpoint. Referenced from `policy.yaml`.                  |
+| `WEBHOOK_SECRET`      | No                 | HMAC signing secret for webhook payloads.                                  |
+| `PERSPECTIVE_API_KEY` | No                 | Required only when using the Perspective toxicity provider.                |
 
 ---
 

@@ -1,5 +1,5 @@
 """
-AI Guardrail Proxy
+sAIfety
 Drop-in proxy for OpenAI-compatible APIs AND the Anthropic Messages API.
 Change your base_url — no other code changes needed.
 
@@ -47,7 +47,7 @@ from billing import create_checkout_session, create_billing_portal_session
 from billing import handle_webhook as _stripe_webhook
 from email_utils import send_password_reset
 
-app = FastAPI(title="AI Guardrail Proxy", version="0.7.0")
+app = FastAPI(title="sAIfety", version="0.7.0")
 
 
 @app.on_event("startup")
