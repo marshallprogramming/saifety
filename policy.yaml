@@ -1,140 +1,110 @@
-# sAIfety — Policy Configuration
-# Each key under "tenants" is a tenant ID.
-# "default" applies to any tenant not explicitly listed.
-# Tenant-specific keys override the default.
-
 tenants:
-  # ── Default policy (applies to all tenants unless overridden) ──────────────
   default:
-    upstream_url: "https://api.openai.com/v1/chat/completions"
-    upstream_api_key: "${OPENAI_API_KEY}" # reads from environment variable
-
+    upstream_url: https://api.openai.com/v1/chat/completions
+    upstream_api_key: ${OPENAI_API_KEY}
     input:
       pii:
         enabled: true
-        action: redact # "redact" replaces PII in-place; "block" rejects request
+        action: redact
         types:
-          - email
-          - phone
-          - ssn
-          - credit_card
-
+        - email
+        - phone
+        - ssn
+        - credit_card
       prompt_injection:
         enabled: true
         action: block
-
       topic_filter:
         enabled: false
         action: block
         blocked_topics: []
-
     output:
-      max_length: null # null = no limit
+      max_length: null
       toxicity:
         enabled: true
-        provider: wordlist # "wordlist" | "openai" | "perspective"
-        # api_key: "${OPENAI_API_KEY}"   # required for openai/perspective providers
-        # threshold: 0.8                # perspective only — 0.0–1.0
-      json_schema: null # null = no schema enforcement
-
+        provider: wordlist
+      json_schema: null
     rate_limit:
       enabled: false
       requests_per_minute: 60
       requests_per_hour: 1000
-
     webhook:
       enabled: false
-      url: "${WEBHOOK_URL}"
-      secret: "${WEBHOOK_SECRET}"
-      on:
-        - input_blocked
-        - output_blocked
-        - rate_limited
-
-  # ── Strict policy (e.g. customer-facing chatbot, regulated industry) ───────
+      url: ${WEBHOOK_URL}
+      secret: ${WEBHOOK_SECRET}
+      true:
+      - input_blocked
+      - output_blocked
+      - rate_limited
   strict:
-    upstream_url: "https://api.openai.com/v1/chat/completions"
-
+    upstream_url: https://api.openai.com/v1/chat/completions
     input:
       pii:
         enabled: true
         action: block
         types:
-          - email
-          - phone
-          - ssn
-          - credit_card
-
+        - email
+        - phone
+        - ssn
+        - credit_card
       prompt_injection:
         enabled: true
         action: block
-
       topic_filter:
         enabled: true
         action: block
         blocked_topics:
-          - competitor
-          - lawsuit
-          - refund
-          - pricing
-
+        - competitor
+        - lawsuit
+        - refund
+        - pricing
     output:
       max_length: 2000
       toxicity:
         enabled: true
-        provider: openai # upgrade to ML-based for customer-facing tenants
-        api_key: "${OPENAI_API_KEY}"
-
+        provider: openai
+        api_key: ${OPENAI_API_KEY}
     rate_limit:
       enabled: true
       requests_per_minute: 20
       requests_per_hour: 200
-
     webhook:
       enabled: false
-      url: "${WEBHOOK_URL}"
-      secret: "${WEBHOOK_SECRET}"
-      on:
-        - input_blocked
-        - output_blocked
-        - rate_limited
-
-  # ── Internal dev policy (permissive, useful for testing) ───────────────────
+      url: ${WEBHOOK_URL}
+      secret: ${WEBHOOK_SECRET}
+      true:
+      - input_blocked
+      - output_blocked
+      - rate_limited
   dev:
-    upstream_url: "https://api.openai.com/v1/chat/completions"
-
+    upstream_url: https://api.openai.com/v1/chat/completions
     input:
       pii:
         enabled: false
         action: redact
         types: []
-
       prompt_injection:
         enabled: false
         action: block
-
       topic_filter:
         enabled: false
         action: block
         blocked_topics: []
-
     output:
       max_length: null
       toxicity:
         enabled: false
         provider: wordlist
-
-  # ── Anthropic / Claude example ────────────────────────────────────────────
   anthropic_strict:
     input:
       pii:
         enabled: true
         action: block
         types:
-          - email
-          - phone
-          - ssn
-          - credit_card
+        - email
+        - phone
+        - ssn
+        - credit_card
       prompt_injection:
         enabled: true
         action: block
@@ -142,36 +112,30 @@ tenants:
         enabled: true
         action: block
         blocked_topics:
-          - lawsuit
-          - competitor
+        - lawsuit
+        - competitor
     output:
       max_length: 4000
       toxicity:
         enabled: true
         provider: openai
-        api_key: "${OPENAI_API_KEY}"
-
-  # ── Structured-output policy (enforces JSON schema on responses) ───────────
+        api_key: ${OPENAI_API_KEY}
   structured:
-    upstream_url: "https://api.openai.com/v1/chat/completions"
-
+    upstream_url: https://api.openai.com/v1/chat/completions
     input:
       pii:
         enabled: true
         action: redact
         types:
-          - email
-          - phone
-
+        - email
+        - phone
       prompt_injection:
         enabled: true
         action: block
-
       topic_filter:
         enabled: false
         action: block
         blocked_topics: []
-
     output:
       max_length: 5000
       toxicity:
@@ -180,8 +144,8 @@ tenants:
       json_schema:
         type: object
         required:
-          - answer
-          - confidence
+        - answer
+        - confidence
         properties:
           answer:
             type: string
@@ -189,3 +153,30 @@ tenants:
             type: number
           sources:
             type: array
+  user_7b8565b1f3b8:
+    upstream_url: https://api.openai.com/v1/chat/completions
+    input:
+      pii:
+        enabled: true
+        action: redact
+        types:
+        - email
+        - phone
+        - ssn
+        - credit_card
+      prompt_injection:
+        enabled: true
+        action: block
+      topic_filter:
+        enabled: false
+        action: block
+        blocked_topics: []
+    output:
+      max_length: null
+      toxicity:
+        enabled: true
+        provider: wordlist
+    rate_limit:
+      enabled: true
+      requests_per_minute: 10
+      requests_per_hour: 200

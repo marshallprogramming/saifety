@@ -74,15 +74,15 @@ class DashboardAuthMiddleware(BaseHTTPMiddleware):
         if dash_auth.is_proxy_path(path) or path in dash_auth.PUBLIC_PATHS:
             return await call_next(request)
 
-        # Dev mode — no password set and no user accounts required
-        if not dash_auth.auth_enabled():
+        token = request.cookies.get("dash_session")
+        session_user = dash_auth.get_session_user(token)
+
+        # Dev mode — no admin password set and no active user session
+        if not dash_auth.auth_enabled() and session_user is None:
             request.state.is_admin = True
             request.state.user_id = None
             request.state.tenant_id = None
             return await call_next(request)
-
-        token = request.cookies.get("dash_session")
-        session_user = dash_auth.get_session_user(token)
 
         if session_user is None:
             accept = request.headers.get("accept", "")

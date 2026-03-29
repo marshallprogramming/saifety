@@ -11,6 +11,9 @@
 # Docs / landing page (served separately, not by FastAPI)
 docs/
 
+# Virtual env
+.venv/
+
 # Python cache
 __pycache__/
 *.pyc

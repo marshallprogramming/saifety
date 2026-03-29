@@ -103,7 +103,7 @@ class SQLiteBackend:
         with self._conn() as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                f"SELECT id, ts, tenant_id, api, outcome, reason, request "
+                f"SELECT id, ts, tenant_id, api, outcome, reason, request, prompt_tokens, completion_tokens "
                 f"FROM audit_log {where} ORDER BY id DESC LIMIT ?",
                 params,
             ).fetchall()
@@ -284,7 +284,7 @@ class PostgresBackend:
         try:
             with conn.cursor(cursor_factory=self._extras.RealDictCursor) as cur:
                 cur.execute(
-                    f"SELECT id, ts, tenant_id, api, outcome, reason, request "
+                    f"SELECT id, ts, tenant_id, api, outcome, reason, request, prompt_tokens, completion_tokens "
                     f"FROM audit_log {where} ORDER BY id DESC LIMIT %s",
                     params,
                 )

@@ -20,7 +20,7 @@ from email.mime.multipart import MIMEMultipart
 logger = logging.getLogger(__name__)
 
 _SMTP_HOST = os.environ.get("SMTP_HOST")
-_SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+_SMTP_PORT = int(os.environ.get("SMTP_PORT") or "587")
 _SMTP_USER = os.environ.get("SMTP_USER")
 _SMTP_PASS = os.environ.get("SMTP_PASS")
 _SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@saifety.dev")
