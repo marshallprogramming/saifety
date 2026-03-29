@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="https://app.saifety.dev/favicon.svg" />
 
     <!-- Primary meta -->
     <title>sAIfety — Automatic AI Guardrails for Every App</title>
@@ -79,7 +80,7 @@
               "name": "Free",
               "price": "0",
               "priceCurrency": "USD",
-              "description": "10,000 requests per month"
+              "description": "200 requests per month (hosted), unlimited self-hosted"
             },
             {
               "@type": "Offer",
@@ -136,7 +137,7 @@
               "name": "How do I integrate sAIfety into my app?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Change one line: set base_url to your sAIfety proxy URL when initialising your OpenAI or Anthropic client. Your existing API key and all other code stays the same. All requests are then automatically checked against your configured guardrails."
+                "text": "Sign up at app.saifety.dev, add your OpenAI or Anthropic API key, and copy your proxy key. Then change one line in your code: set base_url to https://app.saifety.dev/v1 and use your proxy key as the api_key. All requests are then automatically checked against your configured guardrails."
               }
             },
             {
@@ -1267,59 +1268,55 @@
         <h2 class="section-title">One URL change. Full coverage.</h2>
         <p class="section-sub">
           sAIfety is a transparent proxy — it speaks the same API as OpenAI and
-          Anthropic, so your existing code needs no modification.
+          Anthropic. Sign up, add your AI key, and point your code at sAIfety.
         </p>
 
         <div class="steps">
           <div class="step">
             <div class="step-num">1</div>
-            <h3>Start the proxy</h3>
+            <h3>Sign up and add your keys</h3>
             <p>
-              Run sAIfety alongside your app. It listens on port 8000 and
-              forwards requests to whichever AI API you're using.
+              Create a free account at app.saifety.dev. Add your OpenAI or
+              Anthropic API key — we store it encrypted and never log it.
             </p>
             <div class="code-block">
-              <span class="dim">$ </span>uvicorn main:app --port 8000
-            </div>
+<span class="dim"># You get a proxy key like:</span>
+sk-saifety-a1b2c3d4e5f6...</div>
           </div>
           <div class="step">
             <div class="step-num">2</div>
             <h3>Change one line</h3>
             <p>
-              Point your OpenAI or Anthropic client at the proxy instead of the
-              AI API directly. That's the only code change needed.
+              Point your OpenAI or Anthropic client at sAIfety instead of
+              the AI API directly. Use your proxy key. That's the only code change.
             </p>
             <div class="code-block">
-              <span class="dim"># before</span> OpenAI(api_key=<span class="val"
-                >"sk-..."</span
-              >)
+<span class="dim"># before</span>
+OpenAI(api_key=<span class="val">"sk-..."</span>)
 
-              <span class="add"># after — one line change</span>
-              OpenAI( api_key=<span class="val">"sk-..."</span>, base_url=<span
-                class="val"
-                >"http://localhost:8000/v1"</span
-              >
-              )
-            </div>
+<span class="add"># after — one line change</span>
+OpenAI(
+  api_key=<span class="val">"sk-saifety-..."</span>,
+  base_url=<span class="val">"https://app.saifety.dev/v1"</span>
+)</div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
             <h3>Configure your rules</h3>
             <p>
-              Edit <code>policy.yaml</code> to define which guardrails apply to
-              which tenants. No code deploys — just save the file.
+              Use the dashboard to configure which guardrails apply — PII
+              redaction, prompt injection blocking, topic filters. Changes
+              take effect instantly.
             </p>
             <div class="code-block">
-              <span class="key">pii</span>: <span class="key">enabled</span>:
-              <span class="val">true</span> <span class="key">action</span>:
-              <span class="val">redact</span>
-              <span class="key">prompt_injection</span>:
-              <span class="key">enabled</span>: <span class="val">true</span>
-              <span class="key">topic_filter</span>:
-              <span class="key">blocked_topics</span>: -
-              <span class="val">competitor</span> -
-              <span class="val">lawsuit</span>
-            </div>
+<span class="key">pii</span>: <span class="key">enabled</span>: <span class="val">true</span>
+  <span class="key">action</span>: <span class="val">redact</span>
+<span class="key">prompt_injection</span>:
+  <span class="key">enabled</span>: <span class="val">true</span>
+<span class="key">topic_filter</span>:
+  <span class="key">blocked_topics</span>:
+    - <span class="val">competitor</span>
+    - <span class="val">lawsuit</span></div>
           </div>
         </div>
       </div>
@@ -1476,15 +1473,14 @@
 <span class="c-purple">from</span> openai <span class="c-purple">import</span> OpenAI
 
 client = OpenAI(
-    api_key=<span class="c-yellow">"sk-..."</span>,
-    base_url=<span class="c-green">"http://localhost:8000/v1"</span>,  <span class="c-dim"># ← add this</span>
+    api_key=<span class="c-green">"sk-saifety-..."</span>,            <span class="c-dim"># ← your proxy key</span>
+    base_url=<span class="c-green">"https://app.saifety.dev/v1"</span>,  <span class="c-dim"># ← add this</span>
 )
 
 <span class="c-dim"># Everything else stays identical</span>
 response = client.chat.completions.create(
     model=<span class="c-yellow">"gpt-4o"</span>,
     messages=[{<span class="c-yellow">"role"</span>: <span class="c-yellow">"user"</span>, <span class="c-yellow">"content"</span>: <span class="c-yellow">"Hello!"</span>}],
-    extra_headers={<span class="c-yellow">"X-Tenant-ID"</span>: <span class="c-yellow">"my-app"</span>}  <span class="c-dim"># optional</span>
 )</pre>
             </div>
           </div>
@@ -1500,8 +1496,8 @@ response = client.chat.completions.create(
 <span class="c-purple">import</span> OpenAI <span class="c-purple">from</span> <span class="c-yellow">"openai"</span>;
 
 <span class="c-purple">const</span> client = <span class="c-purple">new</span> OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: <span class="c-green">"http://localhost:8000/v1"</span>,  <span class="c-dim">// ← add this</span>
+  apiKey: <span class="c-green">"sk-saifety-..."</span>,             <span class="c-dim">// ← your proxy key</span>
+  baseURL: <span class="c-green">"https://app.saifety.dev/v1"</span>,  <span class="c-dim">// ← add this</span>
 });
 
 <span class="c-dim">// Everything else stays identical</span>
@@ -1523,12 +1519,12 @@ response = client.chat.completions.create(
 <span class="c-purple">from</span> anthropic <span class="c-purple">import</span> Anthropic
 
 client = Anthropic(
-    api_key=<span class="c-yellow">"sk-ant-..."</span>,
-    base_url=<span class="c-green">"http://localhost:8000"</span>,  <span class="c-dim"># ← add this</span>
+    api_key=<span class="c-green">"sk-saifety-..."</span>,             <span class="c-dim"># ← your proxy key</span>
+    base_url=<span class="c-green">"https://app.saifety.dev"</span>,    <span class="c-dim"># ← add this</span>
 )
 
 response = client.messages.create(
-    model=<span class="c-yellow">"claude-opus-4-6"</span>,
+    model=<span class="c-yellow">"claude-sonnet-4-20250514"</span>,
     max_tokens=<span class="c-blue">1024</span>,
     messages=[{<span class="c-yellow">"role"</span>: <span class="c-yellow">"user"</span>, <span class="c-yellow">"content"</span>: <span class="c-yellow">"Hello!"</span>}],
 )</pre>
@@ -1641,25 +1637,23 @@ response = client.messages.create(
           <div class="plan-card">
             <div class="plan-name">Free</div>
             <div class="plan-desc">
-              Self-hosted. Full feature set, no restrictions.
+              Try the hosted version free, or self-host with no limits.
             </div>
             <div class="plan-price">$<span>0</span></div>
             <div class="plan-period">forever</div>
             <ul class="plan-features">
-              <li>Unlimited requests (self-hosted)</li>
+              <li>200 requests / month (hosted)</li>
               <li>All guardrails included</li>
               <li>OpenAI &amp; Anthropic support</li>
-              <li>Policy editor dashboard</li>
+              <li>Dashboard with live tester</li>
               <li>Audit log &amp; token metrics</li>
-              <li>Community support</li>
+              <li>Unlimited if self-hosted</li>
             </ul>
             <a
-              href="https://github.com/marshallprogramming/saifety"
+              href="https://app.saifety.dev/signup"
               class="plan-cta secondary"
-              target="_blank"
-              rel="noopener"
             >
-              Clone on GitHub →
+              Sign up free →
             </a>
           </div>
 
@@ -1676,7 +1670,7 @@ response = client.messages.create(
               <li>100,000 requests / month</li>
               <li>60 requests / minute</li>
               <li>All guardrails included</li>
-              <li>Hosted dashboard</li>
+              <li>Dashboard with live proxy tester</li>
               <li>Email support</li>
               <li>No infrastructure to manage</li>
             </ul>

@@ -119,6 +119,11 @@ async def dashboard():
     return FileResponse(os.path.join(_DASHBOARD_DIR, "index.html"))
 
 
+@app.get("/favicon.svg")
+async def favicon():
+    return FileResponse(os.path.join(_DASHBOARD_DIR, "favicon.svg"), media_type="image/svg+xml")
+
+
 @app.get("/login")
 async def login_page():
     return FileResponse(os.path.join(_DASHBOARD_DIR, "login.html"))
