@@ -1557,7 +1557,7 @@
     <section class="hero">
       <div class="hero-badge">
         <span class="dot"></span>
-        Open source · Self-hostable · No LLM in the detection loop
+        Open source · Works with OpenAI &amp; Anthropic · No LLM in the detection loop
       </div>
       <h1>
         <span class="brand">s<span class="ai">AI</span>fety</span><br />
@@ -1661,7 +1661,8 @@
                 request, so the model can reason about "the email address"
                 coherently. Card numbers are Luhn-validated first, so a random
                 16-digit order ID isn't mangled. The token↔value vault lives in
-                memory for one request, then it's gone.
+                memory for one request, then it's gone. Works identically on the
+                OpenAI and Anthropic routes — streaming included.
               </div>
             </div>
 
@@ -1844,6 +1845,7 @@ OpenAI(
               <span class="tag">SSN</span>
               <span class="tag">Card (Luhn-checked)</span>
               <span class="tag">Tokenize / redact / block</span>
+              <span class="tag">OpenAI &amp; Anthropic</span>
             </div>
           </div>
           <div class="card">
