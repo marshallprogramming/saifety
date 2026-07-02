@@ -10,8 +10,9 @@ Change one line (`base_url`) and every AI call in your app is covered.
 
 ## What it does
 
-- **PII detection** — redacts or blocks emails, phone numbers, SSNs, credit card numbers before they reach the model
-- **Prompt injection blocking** — catches jailbreak attempts, instruction-override patterns, and persona hijacking
+- **PII detection** — redacts, tokenizes, or blocks emails, phone numbers, SSNs, credit card numbers before they reach the model
+- **Reversible PII tokenization** — swap real values for placeholder tokens on the way in, then reinject the originals into the model's response. The LLM provider never sees the data; your app never notices it was gone
+- **Prompt injection blocking** — catches jailbreak attempts, instruction-override patterns, and persona hijacking — including unicode homoglyph, zero-width, leetspeak, and base64 evasion. Fully deterministic: no LLM in the detection loop
 - **Topic filtering** — blocks requests mentioning keywords you define (competitors, legal topics, pricing, etc.)
 - **Toxicity detection** — checks model output for slurs and harmful content (word list, OpenAI Moderation API, or Google Perspective)
 - **Output length and schema enforcement** — cap response length, or require responses to match a JSON schema
@@ -232,9 +233,46 @@ async function sendMessage(text: string) {
 
 | Guardrail            | What it detects                                                                                  | Actions                                                                                                                                       |
 | -------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PII detection**    | Email addresses, US phone numbers, SSNs (`XXX-XX-XXXX`), credit card numbers                     | `redact` — replaces in-place (e.g. `[REDACTED_EMAIL]`) before the request reaches the model<br>`block` — rejects the request with a 400 error |
-| **Prompt injection** | "Ignore all previous instructions", jailbreak patterns, persona hijacking, instruction overrides | `block`                                                                                                                                       |
+| **PII detection**    | Email addresses, US phone numbers, SSNs (`XXX-XX-XXXX`), credit card numbers (Luhn-validated)    | `redact` — replaces in-place (e.g. `[REDACTED_EMAIL]`) before the request reaches the model<br>`tokenize` — replaces with reversible tokens (e.g. `[PII_EMAIL_1]`) and restores the original values in the response<br>`block` — rejects the request with a 400 error |
+| **Prompt injection** | "Ignore all previous instructions", jailbreak patterns, persona hijacking, instruction overrides, delimiter injection — with unicode/leetspeak/base64 evasion resistance | `block`                                                                                                                                       |
 | **Topic filter**     | Any keywords you list as off-limits                                                              | `block`                                                                                                                                       |
+
+### PII tokenization — how reinjection works
+
+With `action: tokenize`, PII never reaches the LLM provider, but your application still gets responses containing the real values:
+
+```
+Your app:   "Email alice@example.com about the invoice"
+      │
+Proxy  ──►  "Email [PII_EMAIL_1] about the invoice"   ──►  LLM
+      │     (token ↔ value kept in an in-memory,
+      │      per-request vault — never logged,
+      │      never sent upstream)
+      │
+LLM    ──►  "I've drafted the email to [PII_EMAIL_1]"
+      │
+Proxy  ──►  "I've drafted the email to alice@example.com"  ──►  Your app
+```
+
+- The same value always maps to the same token within a request, so the model can reason about "the email address" coherently.
+- Works for streaming too — tokens split across SSE chunks are held back until complete, then restored mid-stream.
+- The vault lives only for the duration of a single request. Nothing is persisted.
+- Credit card candidates are Luhn-checked to avoid tokenizing random 16-digit numbers.
+
+### Prompt injection detection — no LLM required
+
+Detection is deterministic and runs in microseconds:
+
+1. **Normalization** — NFKC unicode folding (fullwidth chars, mathematical alphanumerics), zero-width/bidi control character stripping, and Cyrillic/Greek homoglyph mapping are applied to an analysis copy (your message is forwarded untouched).
+2. **Weighted signatures** — categorized patterns (instruction override, persona hijack, prompt extraction, delimiter injection) each carry a weight. The request is blocked when the total score reaches `threshold` (default `1.0` — one strong signal, or two weak ones).
+3. **Obfuscation probes** — base64 blobs are decoded and re-scanned, a leetspeak fold (`1gn0r3 pr3v10us...`) is re-scanned, and bidi overrides or zero-width characters spliced inside words score as signals on their own.
+
+```yaml
+prompt_injection:
+  enabled: true
+  action: block
+  threshold: 1.0 # raise to 1.5/2.0 to require multiple corroborating signals
+```
 
 ### Output guardrails
 
@@ -259,12 +297,13 @@ tenants:
     input:
       pii:
         enabled: true
-        action: redact # silently strip PII before it reaches the model
+        action: tokenize # redact | tokenize (reversible) | block
         types: [email, phone, ssn, credit_card]
 
       prompt_injection:
         enabled: true
         action: block
+        threshold: 1.0 # weighted signal score needed to block
 
       topic_filter:
         enabled: false

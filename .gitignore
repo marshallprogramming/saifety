@@ -30,3 +30,6 @@ keys.yaml
 # Node (dashboard build artifacts if added later)
 node_modules/
 dashboard/dist/
+
+# User database — never commit (contains password hashes and keys)
+users.db

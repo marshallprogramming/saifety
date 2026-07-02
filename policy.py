@@ -28,7 +28,7 @@ def _resolve_env(value: Optional[str]) -> Optional[str]:
 @dataclass
 class PIIConfig:
     enabled: bool = True
-    action: str = "redact"          # "redact" | "block"
+    action: str = "redact"          # "redact" | "tokenize" | "block"
     types: list[str] = field(default_factory=lambda: ["email", "phone", "ssn", "credit_card"])
 
 
@@ -36,6 +36,7 @@ class PIIConfig:
 class InjectionConfig:
     enabled: bool = True
     action: str = "block"
+    threshold: float = 1.0          # block when the weighted signal score reaches this
 
 
 @dataclass
@@ -146,6 +147,7 @@ class PolicyEngine:
                 injection=InjectionConfig(
                     enabled=inj_raw.get("enabled", True),
                     action=inj_raw.get("action", "block"),
+                    threshold=inj_raw.get("threshold", 1.0),
                 ),
                 topic_filter=TopicFilterConfig(
                     enabled=topic_raw.get("enabled", False),

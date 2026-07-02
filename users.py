@@ -141,7 +141,7 @@ def _write_default_policy(tenant_id: str) -> None:
             raw["tenants"][tenant_id] = {
                 "upstream_url": "https://api.openai.com/v1/chat/completions",
                 "input": {
-                    "pii": {"enabled": True, "action": "redact",
+                    "pii": {"enabled": True, "action": "tokenize",
                             "types": ["email", "phone", "ssn", "credit_card"]},
                     "prompt_injection": {"enabled": True, "action": "block"},
                     "topic_filter": {"enabled": False, "action": "block", "blocked_topics": []},

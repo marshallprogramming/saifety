@@ -9,3 +9,8 @@ psycopg2-binary>=2.9  # required for Postgres backend (optional if using SQLite 
 bcrypt>=4.0           # user password hashing
 cryptography>=42.0    # AI key encryption at rest (Fernet)
 stripe>=8.0           # Stripe billing integration
+
+# Testing
+pytest>=8.0
+pytest-asyncio>=0.24
+pytest-cov>=5.0

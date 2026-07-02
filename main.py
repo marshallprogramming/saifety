@@ -344,8 +344,13 @@ async def playground_test(request: Request):
                 overall = "blocked"
         elif result.messages and result.messages[0].get("content") != text:
             sanitized_text = result.messages[0].get("content", text)
+            detail = (
+                "PII replaced with reversible tokens (restored in the response)"
+                if policy.input.pii.action == "tokenize"
+                else "PII found and redacted"
+            )
             checks.append({"guardrail": "PII Detection", "status": "redacted",
-                           "detail": "PII found and redacted"})
+                           "detail": detail})
             sanitized = sanitized_text
             if overall == "passed":
                 overall = "redacted"
@@ -408,6 +413,7 @@ async def playground_live(request: Request):
         else:
             checks.append({"guardrail": "Topic Filter", "status": "passed", "detail": None})
 
+    pii_vault = None
     if policy.input.pii.enabled:
         from guardrails.pii import PIIGuardrail
         pii_guard = PIIGuardrail(policy.input.pii)
@@ -418,7 +424,12 @@ async def playground_live(request: Request):
                 overall = "blocked"
         elif result.messages and result.messages[0].get("content") != text:
             sanitized = result.messages[0].get("content", text)
-            checks.append({"guardrail": "PII Detection", "status": "redacted", "detail": "PII found and redacted"})
+            if pii_guard.vault is not None and pii_guard.vault.has_tokens:
+                pii_vault = pii_guard.vault
+                detail = "PII replaced with reversible tokens (restored in the response)"
+            else:
+                detail = "PII found and redacted"
+            checks.append({"guardrail": "PII Detection", "status": "redacted", "detail": detail})
             if overall == "passed":
                 overall = "redacted"
         else:
@@ -484,6 +495,10 @@ async def playground_live(request: Request):
         ai_response_text = f"[API error: {e.response.status_code}]"
     except Exception as e:
         ai_response_text = f"[Error: {e}]"
+
+    # Reinject tokenized PII into the model's reply before returning it
+    if pii_vault is not None and ai_response_text:
+        ai_response_text = pii_vault.restore(ai_response_text)
 
     t_total = round((_time.time() - t_start) * 1000)
 
@@ -658,7 +673,7 @@ async def proxy_openai(
 
     # Streaming path
     if body.get("stream"):
-        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity, response_headers=extra_headers)
+        return stream_openai(policy.upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity, response_headers=extra_headers, vault=input_result.vault)
 
     # Non-streaming path
     try:
@@ -673,7 +688,8 @@ async def proxy_openai(
     response_data = resp.json()
 
     if "choices" in response_data:
-        output_result = pipeline.run_output_openai(response_data["choices"])
+        # Reinjects tokenized PII (if any) before validation
+        output_result = pipeline.run_output_openai(response_data["choices"], vault=input_result.vault)
         if output_result.blocked:
             audit.log(tenant_id, "output_blocked", output_result.reason, body, "openai")
             webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "openai", output_result.guardrail, output_result.reason, body.get("messages", []))
@@ -785,7 +801,7 @@ async def proxy_anthropic(
 
     # Streaming path
     if body.get("stream"):
-        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity, response_headers=extra_headers)
+        return stream_anthropic(upstream_url, body, forward_headers, pipeline, tenant_id, audit, webhook, policy.webhook, toxicity, policy.output.toxicity, response_headers=extra_headers, vault=input_result.vault)
 
     # Non-streaming path
     try:
@@ -801,7 +817,8 @@ async def proxy_anthropic(
 
     # Anthropic response: {"content": [{"type": "text", "text": "..."}], ...}
     if "content" in response_data and isinstance(response_data["content"], list):
-        output_result = pipeline.run_output_anthropic(response_data["content"])
+        # Reinjects tokenized PII (if any) before validation
+        output_result = pipeline.run_output_anthropic(response_data["content"], vault=input_result.vault)
         if output_result.blocked:
             audit.log(tenant_id, "output_blocked", output_result.reason, body, "anthropic")
             webhook.dispatch(policy.webhook, "output_blocked", tenant_id, "anthropic", output_result.guardrail, output_result.reason, body.get("messages", []))

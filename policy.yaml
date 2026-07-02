@@ -5,7 +5,7 @@ tenants:
     input:
       pii:
         enabled: true
-        action: redact
+        action: tokenize
         types:
         - email
         - phone
